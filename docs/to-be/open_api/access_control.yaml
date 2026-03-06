@@ -1,0 +1,534 @@
+openapi: 3.0.0
+info:
+  title: Access Control API
+  description: Управление доступом - замки, ворота, права, временный доступ
+  version: 1.0.0
+servers:
+  - url: http://localhost:8084/api/v1
+    description: Local development
+
+tags:
+  - name: Locks
+    description: Управление замками
+    x-layer: presenter
+  - name: Gates
+    description: Управление воротами
+    x-layer: presenter
+  - name: Permissions
+    description: Права доступа
+    x-layer: presenter
+  - name: Temporary Access
+    description: Временный доступ по коду
+    x-layer: presenter
+  - name: Audit
+    description: Журнал доступа
+    x-layer: presenter
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Lock:
+      type: object
+      description: Замок
+      x-layer: domain
+      properties:
+        deviceId:
+          type: string
+          format: uuid
+        state:
+          type: string
+          enum: [locked, unlocked, jammed, opening, closing]
+        battery:
+          type: integer
+          minimum: 0
+          maximum: 100
+        lastAction:
+          type: string
+          format: date-time
+        lastActionBy:
+          type: string
+          format: uuid
+
+    Gate:
+      type: object
+      description: Ворота
+      x-layer: domain
+      properties:
+        deviceId:
+          type: string
+          format: uuid
+        state:
+          type: string
+          enum: [open, closed, opening, closing, stopped]
+        lastAction:
+          type: string
+          format: date-time
+        lastActionBy:
+          type: string
+          format: uuid
+
+    Permission:
+      type: object
+      description: Право доступа
+      x-layer: domain
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        deviceId:
+          type: string
+          format: uuid
+        actions:
+          type: array
+          items:
+            type: string
+            enum: [lock, unlock, open, close, view]
+        validFrom:
+          type: string
+          format: date-time
+        validTo:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        createdBy:
+          type: string
+          format: uuid
+
+    TemporaryCode:
+      type: object
+      description: Временный код доступа
+      x-layer: domain
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+          example: "123456"
+        phone:
+          type: string
+        deviceId:
+          type: string
+          format: uuid
+        validFrom:
+          type: string
+          format: date-time
+        validTo:
+          type: string
+          format: date-time
+        uses:
+          type: integer
+        maxUses:
+          type: integer
+        status:
+          type: string
+          enum: [active, expired, used, cancelled]
+
+    AuditEntry:
+      type: object
+      description: Запись аудита
+      x-layer: domain
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        deviceId:
+          type: string
+          format: uuid
+        action:
+          type: string
+          enum: [lock, unlock, open, close, access_denied]
+        result:
+          type: string
+          enum: [success, failed, denied]
+        details:
+          type: object
+        ipAddress:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+
+    CreatePermissionRequest:
+      type: object
+      required:
+        - userId
+        - deviceId
+        - actions
+      properties:
+        userId:
+          type: string
+          format: uuid
+        deviceId:
+          type: string
+          format: uuid
+        actions:
+          type: array
+          items:
+            type: string
+            enum: [lock, unlock, open, close, view]
+        validFrom:
+          type: string
+          format: date-time
+        validTo:
+          type: string
+          format: date-time
+
+    CreateTemporaryRequest:
+      type: object
+      required:
+        - phone
+        - deviceId
+        - validFrom
+        - validTo
+      properties:
+        phone:
+          type: string
+          example: "+79991234567"
+        deviceId:
+          type: string
+          format: uuid
+        validFrom:
+          type: string
+          format: date-time
+        validTo:
+          type: string
+          format: date-time
+        maxUses:
+          type: integer
+          default: 1
+
+    VerifyCodeRequest:
+      type: object
+      required:
+        - code
+        - deviceId
+      properties:
+        code:
+          type: string
+        deviceId:
+          type: string
+          format: uuid
+
+paths:
+  /locks/{deviceId}/lock:
+    post:
+      tags: [Locks]
+      summary: Закрыть замок
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '202':
+          description: Команда принята
+
+  /locks/{deviceId}/unlock:
+    post:
+      tags: [Locks]
+      summary: Открыть замок
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '202':
+          description: Команда принята
+
+  /locks/{deviceId}:
+    get:
+      tags: [Locks]
+      summary: Получить состояние замка
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Состояние замка
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Lock'
+
+  /gates/{deviceId}/open:
+    post:
+      tags: [Gates]
+      summary: Открыть ворота
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '202':
+          description: Команда принята
+
+  /gates/{deviceId}/close:
+    post:
+      tags: [Gates]
+      summary: Закрыть ворота
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '202':
+          description: Команда принята
+
+  /gates/{deviceId}/stop:
+    post:
+      tags: [Gates]
+      summary: Остановить ворота
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '202':
+          description: Команда принята
+
+  /gates/{deviceId}:
+    get:
+      tags: [Gates]
+      summary: Получить состояние ворот
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Состояние ворот
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Gate'
+
+  /permissions:
+    post:
+      tags: [Permissions]
+      summary: Назначить права доступа
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePermissionRequest'
+      responses:
+        '201':
+          description: Права назначены
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Permission'
+
+  /permissions/user/{userId}:
+    get:
+      tags: [Permissions]
+      summary: Получить права пользователя
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Список прав
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Permission'
+
+  /permissions/{permissionId}:
+    delete:
+      tags: [Permissions]
+      summary: Отозвать права
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: permissionId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Права отозваны
+
+  /access/temporary:
+    post:
+      tags: [Temporary Access]
+      summary: Создать временный доступ
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTemporaryRequest'
+      responses:
+        '201':
+          description: Временный доступ создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemporaryCode'
+
+  /access/verify-code:
+    post:
+      tags: [Temporary Access]
+      summary: Проверить временный код
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyCodeRequest'
+      responses:
+        '200':
+          description: Код верный
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  granted:
+                    type: boolean
+                    example: true
+                  deviceId:
+                    type: string
+                    format: uuid
+        '403':
+          description: Код недействителен
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  granted:
+                    type: boolean
+                    example: false
+                  reason:
+                    type: string
+                    enum: [invalid, expired, used, wrong_device]
+
+  /access/temporary/active:
+    get:
+      tags: [Temporary Access]
+      summary: Активные временные доступы
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: deviceId
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Список активных доступов
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TemporaryCode'
+
+  /audit:
+    get:
+      tags: [Audit]
+      summary: Получить журнал доступа
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: deviceId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: userId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+      responses:
+        '200':
+          description: Записи аудита
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AuditEntry'

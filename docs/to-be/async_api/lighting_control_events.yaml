@@ -1,0 +1,182 @@
+asyncapi: 2.5.0
+info:
+  title: Lighting Control Events
+  version: 1.0.0
+  description: События управления освещением
+
+channels:
+  light.power.changed:
+    publish:
+      operationId: publishLightPowerChanged
+      message:
+        $ref: '#/components/messages/LightPowerChanged'
+
+  light.brightness.changed:
+    publish:
+      operationId: publishLightBrightnessChanged
+      message:
+        $ref: '#/components/messages/LightBrightnessChanged'
+
+  light.color.changed:
+    publish:
+      operationId: publishLightColorChanged
+      message:
+        $ref: '#/components/messages/LightColorChanged'
+
+  group.power.changed:
+    publish:
+      operationId: publishGroupPowerChanged
+      message:
+        $ref: '#/components/messages/GroupPowerChanged'
+
+  scene.activated:
+    publish:
+      operationId: publishSceneActivated
+      message:
+        $ref: '#/components/messages/SceneActivated'
+
+components:
+  messages:
+    LightPowerChanged:
+      name: LightPowerChanged
+      title: Состояние лампы изменено
+      payload:
+        type: object
+        required:
+          - eventId
+          - eventType
+          - deviceId
+          - power
+          - timestamp
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          eventType:
+            type: string
+            const: light.power.changed
+          deviceId:
+            type: string
+            format: uuid
+          power:
+            type: boolean
+          timestamp:
+            type: string
+            format: date-time
+
+    LightBrightnessChanged:
+      name: LightBrightnessChanged
+      title: Яркость лампы изменена
+      payload:
+        type: object
+        required:
+          - eventId
+          - eventType
+          - deviceId
+          - brightness
+          - timestamp
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          eventType:
+            type: string
+            const: light.brightness.changed
+          deviceId:
+            type: string
+            format: uuid
+          brightness:
+            type: integer
+            minimum: 0
+            maximum: 100
+          timestamp:
+            type: string
+            format: date-time
+
+    LightColorChanged:
+      name: LightColorChanged
+      title: Цвет лампы изменен
+      payload:
+        type: object
+        required:
+          - eventId
+          - eventType
+          - deviceId
+          - timestamp
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          eventType:
+            type: string
+            const: light.color.changed
+          deviceId:
+            type: string
+            format: uuid
+          colorHex:
+            type: string
+            pattern: "^#[0-9A-Fa-f]{6}$"
+          colorTemperature:
+            type: integer
+          timestamp:
+            type: string
+            format: date-time
+
+    GroupPowerChanged:
+      name: GroupPowerChanged
+      title: Состояние группы изменено
+      payload:
+        type: object
+        required:
+          - eventId
+          - eventType
+          - groupId
+          - power
+          - timestamp
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          eventType:
+            type: string
+            const: group.power.changed
+          groupId:
+            type: string
+            format: uuid
+          power:
+            type: boolean
+          deviceCount:
+            type: integer
+          timestamp:
+            type: string
+            format: date-time
+
+    SceneActivated:
+      name: SceneActivated
+      title: Сцена активирована
+      payload:
+        type: object
+        required:
+          - eventId
+          - eventType
+          - sceneId
+          - homeId
+          - timestamp
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          eventType:
+            type: string
+            const: scene.activated
+          sceneId:
+            type: string
+            format: uuid
+          homeId:
+            type: string
+            format: uuid
+          name:
+            type: string
+          timestamp:
+            type: string
+            format: date-time

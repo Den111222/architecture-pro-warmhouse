@@ -1,0 +1,472 @@
+openapi: 3.0.0
+info:
+  title: Scenarios Engine API
+  description: Движок сценариев - автоматизация правил
+  version: 1.0.0
+servers:
+  - url: http://localhost:8087/api/v1
+    description: Local development
+
+tags:
+  - name: Scenarios
+    description: Управление сценариями
+    x-layer: presenter
+  - name: Executions
+    description: История выполнения
+    x-layer: presenter
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Scenario:
+      type: object
+      description: Сценарий автоматизации
+      x-layer: domain
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        homeId:
+          type: string
+          format: uuid
+        trigger:
+          type: object
+          discriminator:
+            propertyName: type
+          oneOf:
+            - $ref: '#/components/schemas/DeviceTrigger'
+            - $ref: '#/components/schemas/ScheduleTrigger'
+            - $ref: '#/components/schemas/LocationTrigger'
+        conditions:
+          type: array
+          items:
+            type: object
+            properties:
+              deviceId:
+                type: string
+                format: uuid
+              property:
+                type: string
+                enum: [temperature, humidity, power, motion]
+              operator:
+                type: string
+                enum: [eq, neq, gt, lt, gte, lte]
+              value:
+                type: number
+        actions:
+          type: array
+          items:
+            type: object
+            properties:
+              deviceId:
+                type: string
+                format: uuid
+              command:
+                type: string
+                enum: [turn_on, turn_off, set_target_temp, lock, unlock, open, close]
+              parameters:
+                type: object
+        enabled:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    DeviceTrigger:
+      type: object
+      required:
+        - type
+        - deviceId
+        - event
+      properties:
+        type:
+          type: string
+          enum: [device]
+        deviceId:
+          type: string
+          format: uuid
+        event:
+          type: string
+          enum: [turned_on, turned_off, temperature_above, temperature_below, motion_detected, door_opened]
+        value:
+          type: number
+          description: Пороговое значение для temperature_above/below
+
+    ScheduleTrigger:
+      type: object
+      required:
+        - type
+        - cron
+      properties:
+        type:
+          type: string
+          enum: [schedule]
+        cron:
+          type: string
+          example: "0 8 * * *"
+        timezone:
+          type: string
+          default: "Europe/Moscow"
+
+    LocationTrigger:
+      type: object
+      required:
+        - type
+        - zone
+        - event
+      properties:
+        type:
+          type: string
+          enum: [location]
+        zone:
+          type: object
+          properties:
+            lat:
+              type: number
+            lng:
+              type: number
+            radius:
+              type: integer
+        event:
+          type: string
+          enum: [enter, exit]
+
+    Execution:
+      type: object
+      description: Выполнение сценария
+      x-layer: domain
+      properties:
+        id:
+          type: string
+          format: uuid
+        scenarioId:
+          type: string
+          format: uuid
+        triggeredAt:
+          type: string
+          format: date-time
+        triggerData:
+          type: object
+        actions:
+          type: array
+          items:
+            type: object
+            properties:
+              action:
+                type: string
+              status:
+                type: string
+                enum: [success, failed, skipped]
+              error:
+                type: string
+        status:
+          type: string
+          enum: [completed, failed, partial]
+        completedAt:
+          type: string
+          format: date-time
+
+    CreateScenarioRequest:
+      type: object
+      required:
+        - name
+        - homeId
+        - trigger
+        - actions
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        homeId:
+          type: string
+          format: uuid
+        trigger:
+          oneOf:
+            - $ref: '#/components/schemas/DeviceTrigger'
+            - $ref: '#/components/schemas/ScheduleTrigger'
+            - $ref: '#/components/schemas/LocationTrigger'
+        conditions:
+          type: array
+          items:
+            type: object
+            properties:
+              deviceId:
+                type: string
+                format: uuid
+              property:
+                type: string
+              operator:
+                type: string
+              value:
+                type: number
+        actions:
+          type: array
+          items:
+            type: object
+            required:
+              - deviceId
+              - command
+            properties:
+              deviceId:
+                type: string
+                format: uuid
+              command:
+                type: string
+              parameters:
+                type: object
+        enabled:
+          type: boolean
+          default: true
+
+    UpdateScenarioRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        trigger:
+          oneOf:
+            - $ref: '#/components/schemas/DeviceTrigger'
+            - $ref: '#/components/schemas/ScheduleTrigger'
+            - $ref: '#/components/schemas/LocationTrigger'
+        conditions:
+          type: array
+          items:
+            type: object
+        actions:
+          type: array
+          items:
+            type: object
+        enabled:
+          type: boolean
+
+paths:
+  /scenarios:
+    post:
+      tags: [Scenarios]
+      summary: Создать сценарий
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateScenarioRequest'
+      responses:
+        '201':
+          description: Сценарий создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Scenario'
+
+    get:
+      tags: [Scenarios]
+      summary: Получить список сценариев
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: homeId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: enabled
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Список сценариев
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Scenario'
+
+  /scenarios/{scenarioId}:
+    get:
+      tags: [Scenarios]
+      summary: Получить сценарий по ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: scenarioId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Информация о сценарии
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Scenario'
+
+    put:
+      tags: [Scenarios]
+      summary: Обновить сценарий
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: scenarioId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateScenarioRequest'
+      responses:
+        '200':
+          description: Сценарий обновлен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Scenario'
+
+    delete:
+      tags: [Scenarios]
+      summary: Удалить сценарий
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: scenarioId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Сценарий удален
+
+  /scenarios/{scenarioId}/enable:
+    post:
+      tags: [Scenarios]
+      summary: Включить сценарий
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: scenarioId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Сценарий включен
+
+  /scenarios/{scenarioId}/disable:
+    post:
+      tags: [Scenarios]
+      summary: Отключить сценарий
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: scenarioId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Сценарий отключен
+
+  /scenarios/{scenarioId}/test:
+    post:
+      tags: [Scenarios]
+      summary: Протестировать сценарий
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: scenarioId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                mockData:
+                  type: object
+      responses:
+        '200':
+          description: Результат теста
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  triggered:
+                    type: boolean
+                  actionsExecuted:
+                    type: array
+                    items:
+                      type: string
+
+  /executions:
+    get:
+      tags: [Executions]
+      summary: Получить историю выполнения
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: scenarioId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        '200':
+          description: История выполнений
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Execution'

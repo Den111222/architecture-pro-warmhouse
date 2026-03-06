@@ -1,0 +1,299 @@
+asyncapi: 2.5.0
+info:
+  title: User Service Events
+  version: 1.0.0
+  description: События пользовательского сервиса
+servers:
+  production:
+    url: kafka.teplydom.ru:9092
+    protocol: kafka
+    description: Kafka cluster
+
+channels:
+  user.registered:
+    publish:
+      operationId: publishUserRegistered
+      message:
+        $ref: '#/components/messages/UserRegistered'
+    subscribe:
+      operationId: onUserRegistered
+      message:
+        $ref: '#/components/messages/UserRegistered'
+
+  user.updated:
+    publish:
+      operationId: publishUserUpdated
+      message:
+        $ref: '#/components/messages/UserUpdated'
+
+  user.deleted:
+    publish:
+      operationId: publishUserDeleted
+      message:
+        $ref: '#/components/messages/UserDeleted'
+
+  user.joined.home:
+    publish:
+      operationId: publishUserJoinedHome
+      message:
+        $ref: '#/components/messages/UserJoinedHome'
+
+  user.left.home:
+    publish:
+      operationId: publishUserLeftHome
+      message:
+        $ref: '#/components/messages/UserLeftHome'
+
+  invite.sent:
+    publish:
+      operationId: publishInviteSent
+      message:
+        $ref: '#/components/messages/InviteSent'
+
+  invite.accepted:
+    publish:
+      operationId: publishInviteAccepted
+      message:
+        $ref: '#/components/messages/InviteAccepted'
+
+components:
+  messages:
+    UserRegistered:
+      name: UserRegistered
+      title: Пользователь зарегистрирован
+      contentType: application/json
+      payload:
+        type: object
+        required:
+          - eventId
+          - eventType
+          - userId
+          - email
+          - timestamp
+        properties:
+          eventId:
+            type: string
+            format: uuid
+            description: Уникальный идентификатор события
+          eventType:
+            type: string
+            const: user.registered
+          userId:
+            type: string
+            format: uuid
+          email:
+            type: string
+            format: email
+          fullName:
+            type: string
+          timestamp:
+            type: string
+            format: date-time
+          metadata:
+            type: object
+            properties:
+              source:
+                type: string
+                enum: [web, mobile, api]
+
+    UserUpdated:
+      name: UserUpdated
+      title: Профиль пользователя обновлен
+      payload:
+        type: object
+        required:
+          - eventId
+          - eventType
+          - userId
+          - timestamp
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          eventType:
+            type: string
+            const: user.updated
+          userId:
+            type: string
+            format: uuid
+          changes:
+            type: array
+            items:
+              type: object
+              properties:
+                field:
+                  type: string
+                oldValue:
+                  type: string
+                newValue:
+                  type: string
+          timestamp:
+            type: string
+            format: date-time
+
+    UserDeleted:
+      name: UserDeleted
+      title: Пользователь удален
+      payload:
+        type: object
+        required:
+          - eventId
+          - eventType
+          - userId
+          - timestamp
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          eventType:
+            type: string
+            const: user.deleted
+          userId:
+            type: string
+            format: uuid
+          reason:
+            type: string
+          anonymized:
+            type: boolean
+          timestamp:
+            type: string
+            format: date-time
+
+    UserJoinedHome:
+      name: UserJoinedHome
+      title: Пользователь присоединился к дому
+      payload:
+        type: object
+        required:
+          - eventId
+          - eventType
+          - userId
+          - homeId
+          - role
+          - timestamp
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          eventType:
+            type: string
+            const: user.joined.home
+          userId:
+            type: string
+            format: uuid
+          homeId:
+            type: string
+            format: uuid
+          role:
+            type: string
+            enum: [admin, member, guest]
+          invitedBy:
+            type: string
+            format: uuid
+          timestamp:
+            type: string
+            format: date-time
+
+    UserLeftHome:
+      name: UserLeftHome
+      title: Пользователь покинул дом
+      payload:
+        type: object
+        required:
+          - eventId
+          - eventType
+          - userId
+          - homeId
+          - timestamp
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          eventType:
+            type: string
+            const: user.left.home
+          userId:
+            type: string
+            format: uuid
+          homeId:
+            type: string
+            format: uuid
+          reason:
+            type: string
+            enum: [removed, left, deleted]
+          timestamp:
+            type: string
+            format: date-time
+
+    InviteSent:
+      name: InviteSent
+      title: Приглашение отправлено
+      payload:
+        type: object
+        required:
+          - eventId
+          - eventType
+          - inviteId
+          - email
+          - homeId
+          - invitedBy
+          - timestamp
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          eventType:
+            type: string
+            const: invite.sent
+          inviteId:
+            type: string
+            format: uuid
+          email:
+            type: string
+            format: email
+          homeId:
+            type: string
+            format: uuid
+          invitedBy:
+            type: string
+            format: uuid
+          role:
+            type: string
+          expiresAt:
+            type: string
+            format: date-time
+          timestamp:
+            type: string
+            format: date-time
+
+    InviteAccepted:
+      name: InviteAccepted
+      title: Приглашение принято
+      payload:
+        type: object
+        required:
+          - eventId
+          - eventType
+          - inviteId
+          - userId
+          - homeId
+          - timestamp
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          eventType:
+            type: string
+            const: invite.accepted
+          inviteId:
+            type: string
+            format: uuid
+          userId:
+            type: string
+            format: uuid
+          homeId:
+            type: string
+            format: uuid
+          timestamp:
+            type: string
+            format: date-time

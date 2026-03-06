@@ -1,0 +1,194 @@
+graph TB
+    %% Стили
+    classDef external fill:#6C47B0,color:#fff,stroke:#333
+    classDef framework fill:#E67E22,color:#fff,stroke:#333
+    classDef repo fill:#28B463,color:#fff,stroke:#333
+    classDef presenter fill:#9B59B6,color:#fff,stroke:#333
+    classDef service fill:#F39C12,color:#fff,stroke:#333
+    classDef domain fill:#7F8C8D,color:#fff,stroke:#333
+
+    subgraph "Слой 0: Внешние системы"
+        PG[(PostgreSQL)]:::external
+        Kafka[(Kafka)]:::external
+        ZigbeeGW["Zigbee Gateway"]:::external
+    end
+
+    subgraph "Слой 4: Фреймворки и реализации"
+        FastAPI["FastAPI Framework"]:::framework
+        AsyncPG["asyncpg"]:::framework
+        Aiokafka["aiokafka"]:::framework
+        ZigbeeLib["zigbee-herdsman"]:::framework
+
+        PostgresLightRepo["PostgresLightRepository
+        (реализация LightRepository)"]:::framework
+        PostgresGroupRepo["PostgresGroupRepository
+        (реализация GroupRepository)"]:::framework
+        PostgresSceneRepo["PostgresSceneRepository
+        (реализация SceneRepository)"]:::framework
+
+        ZigbeeGatewayImpl["ZigbeeDeviceGateway
+        (реализация DeviceGateway)"]:::framework
+        KafkaPublisherImpl["KafkaEventPublisher"]:::framework
+        KafkaSubscriberImpl["KafkaEventSubscriber"]:::framework
+
+        DIContainer["DI Container"]:::framework
+    end
+
+    subgraph "Слой 3A: Интерфейсы"
+        ILightRepo["<<interface>>
+        LightRepository"]:::repo
+
+        IGroupRepo["<<interface>>
+        GroupRepository"]:::repo
+
+        ISceneRepo["<<interface>>
+        SceneRepository"]:::repo
+
+        IDeviceGateway["<<interface>>
+        DeviceGateway"]:::repo
+
+        IEventPublisher["<<interface>>
+        EventPublisher"]:::repo
+
+        IEventSubscriber["<<interface>>
+        EventSubscriber"]:::repo
+    end
+
+    subgraph "Слой 3B: Representation"
+        LightRouter["LightRouter
+        (/lights/*)"]:::presenter
+        GroupRouter["GroupRouter
+        (/groups/*)"]:::presenter
+        SceneRouter["SceneRouter
+        (/scenes/*)"]:::presenter
+
+        LightController["LightController"]:::presenter
+        GroupController["GroupController"]:::presenter
+        SceneController["SceneController"]:::presenter
+
+        GetCurrentUserDep["get_current_user()"]:::presenter
+        CheckHomeAccessDep["check_home_access()"]:::presenter
+
+        JSONPresenter["JSONPresenter"]:::presenter
+        LightDTO["LightDTO"]:::presenter
+        GroupDTO["GroupDTO"]:::presenter
+        SceneDTO["SceneDTO"]:::presenter
+    end
+
+    subgraph "Слой 2: Use Cases"
+        GetLightStateUC["GetLightStateUseCase"]:::service
+        SetPowerUC["SetPowerUseCase"]:::service
+        SetBrightnessUC["SetBrightnessUseCase"]:::service
+        SetColorUC["SetColorUseCase"]:::service
+        CreateGroupUC["CreateGroupUseCase"]:::service
+        GroupPowerUC["GroupPowerUseCase"]:::service
+        CreateSceneUC["CreateSceneUseCase"]:::service
+        ActivateSceneUC["ActivateSceneUseCase"]:::service
+        ProcessMotionEventUC["ProcessMotionEventUseCase"]:::service
+    end
+
+    subgraph "Слой 1: Domain"
+        LightEntity["Light Entity"]:::domain
+        GroupEntity["Group Entity"]:::domain
+        SceneEntity["Scene Entity"]:::domain
+
+        BrightnessVO["Brightness VO"]:::domain
+        ColorVO["Color VO"]:::domain
+
+        LightChanged["LightChanged Event"]:::domain
+        GroupChanged["GroupChanged Event"]:::domain
+        SceneActivated["SceneActivated Event"]:::domain
+        MotionDetected["MotionDetected Event"]:::domain
+    end
+
+    %% Связи
+    DIContainer --> PostgresLightRepo
+    DIContainer --> PostgresGroupRepo
+    DIContainer --> PostgresSceneRepo
+    DIContainer --> ZigbeeGatewayImpl
+    DIContainer --> KafkaPublisherImpl
+    DIContainer --> KafkaSubscriberImpl
+
+    FastAPI --> LightRouter
+    FastAPI --> GroupRouter
+    FastAPI --> SceneRouter
+
+    LightRouter --> LightController
+    GroupRouter --> GroupController
+    SceneRouter --> SceneController
+
+    LightController --> GetCurrentUserDep
+    LightController --> CheckHomeAccessDep
+    GroupController --> CheckHomeAccessDep
+    SceneController --> CheckHomeAccessDep
+
+    LightController --> GetLightStateUC
+    LightController --> SetPowerUC
+    LightController --> SetBrightnessUC
+    LightController --> SetColorUC
+    GroupController --> CreateGroupUC
+    GroupController --> GroupPowerUC
+    SceneController --> CreateSceneUC
+    SceneController --> ActivateSceneUC
+
+    LightController --> JSONPresenter
+    LightController --> LightDTO
+    GroupController --> GroupDTO
+    SceneController --> SceneDTO
+
+    GetLightStateUC --> ILightRepo
+    GetLightStateUC --> LightEntity
+
+    SetPowerUC --> ILightRepo
+    SetPowerUC --> IDeviceGateway
+    SetPowerUC --> IEventPublisher
+    SetPowerUC --> LightEntity
+    SetPowerUC --> LightChanged
+
+    SetBrightnessUC --> ILightRepo
+    SetBrightnessUC --> IDeviceGateway
+    SetBrightnessUC --> IEventPublisher
+    SetBrightnessUC --> LightEntity
+    SetBrightnessUC --> LightChanged
+
+    CreateGroupUC --> IGroupRepo
+    CreateGroupUC --> GroupEntity
+
+    GroupPowerUC --> IGroupRepo
+    GroupPowerUC --> IDeviceGateway
+    GroupPowerUC --> IEventPublisher
+    GroupPowerUC --> GroupChanged
+
+    CreateSceneUC --> ISceneRepo
+    CreateSceneUC --> SceneEntity
+
+    ActivateSceneUC --> ISceneRepo
+    ActivateSceneUC --> IDeviceGateway
+    ActivateSceneUC --> IEventPublisher
+    ActivateSceneUC --> SceneEntity
+    ActivateSceneUC --> SceneActivated
+
+    ProcessMotionEventUC --> ILightRepo
+    ProcessMotionEventUC --> IDeviceGateway
+    ProcessMotionEventUC --> IEventPublisher
+
+    ILightRepo -.-> PostgresLightRepo
+    IGroupRepo -.-> PostgresGroupRepo
+    ISceneRepo -.-> PostgresSceneRepo
+    IDeviceGateway -.-> ZigbeeGatewayImpl
+    IEventPublisher -.-> KafkaPublisherImpl
+    IEventSubscriber -.-> KafkaSubscriberImpl
+
+    PostgresLightRepo --> AsyncPG
+    PostgresGroupRepo --> AsyncPG
+    PostgresSceneRepo --> AsyncPG
+    AsyncPG --> PG
+
+    ZigbeeGatewayImpl --> ZigbeeLib
+    ZigbeeLib --> ZigbeeGW
+
+    KafkaPublisherImpl --> Aiokafka
+    KafkaSubscriberImpl --> Aiokafka
+    Aiokafka --> Kafka
+
+    KafkaSubscriberImpl --> ProcessMotionEventUC

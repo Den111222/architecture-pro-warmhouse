@@ -1,0 +1,259 @@
+graph TB
+    %% Стили
+    classDef external fill:#6C47B0,color:#fff,stroke:#333
+    classDef framework fill:#E67E22,color:#fff,stroke:#333
+    classDef repo fill:#28B463,color:#fff,stroke:#333
+    classDef presenter fill:#9B59B6,color:#fff,stroke:#333
+    classDef service fill:#F39C12,color:#fff,stroke:#333
+    classDef domain fill:#7F8C8D,color:#fff,stroke:#333
+
+    subgraph "Слой 0: Внешние системы"
+        PG[(PostgreSQL)]:::external
+        Kafka[(Kafka)]:::external
+        EmailSvc["Email Service"]:::external
+        Redis[(Redis)]:::external
+    end
+
+    subgraph "Слой 4: Фреймворки и реализации"
+        FastAPI["FastAPI Framework"]:::framework
+        AsyncPG["asyncpg"]:::framework
+        Aiokafka["aiokafka"]:::framework
+        RedisClient["redis-py"]:::framework
+        Bcrypt["passlib"]:::framework
+        PyJWT["PyJWT"]:::framework
+
+        PostgresUserRepo["PostgresUserRepository
+        (реализация UserRepository)"]:::framework
+        PostgresInviteRepo["PostgresInviteRepository
+        (реализация InviteRepository)"]:::framework
+        PostgresRoleRepo["PostgresRoleRepository
+        (реализация RoleRepository)"]:::framework
+        PostgresMembershipRepo["PostgresMembershipRepository
+        (реализация MembershipRepository)"]:::framework
+
+        SMTPEmailSender["SMTPEmailSender
+        (реализация EmailGateway)"]:::framework
+        KafkaPublisherImpl["KafkaEventPublisher
+        (реализация EventPublisher)"]:::framework
+        KafkaSubscriberImpl["KafkaEventSubscriber
+        (реализация EventSubscriber)"]:::framework
+        RedisTokenStore["RedisTokenStore
+        (хранение токенов)"]:::framework
+
+        DIContainer["DI Container
+        (сборка зависимостей)"]:::framework
+    end
+
+    subgraph "Слой 3A: Интерфейсы"
+        IUserRepo["<<interface>>
+        UserRepository"]:::repo
+
+        IInviteRepo["<<interface>>
+        InviteRepository"]:::repo
+
+        IRoleRepo["<<interface>>
+        RoleRepository"]:::repo
+
+        IMembershipRepo["<<interface>>
+        MembershipRepository"]:::repo
+
+        IEmailGateway["<<interface>>
+        EmailGateway"]:::repo
+
+        IEventPublisher["<<interface>>
+        EventPublisher"]:::repo
+
+        IEventSubscriber["<<interface>>
+        EventSubscriber"]:::repo
+    end
+
+    subgraph "Слой 3B: Representation"
+        direction TB
+
+        subgraph "Routers"
+            AuthRouter["AuthRouter
+            (/auth/*)"]:::presenter
+            UserRouter["UserRouter
+            (/users/*)"]:::presenter
+            InviteRouter["InviteRouter
+            (/invites/*)"]:::presenter
+            RoleRouter["RoleRouter
+            (/roles/*)"]:::presenter
+        end
+
+        subgraph "Controllers"
+            AuthController["AuthController
+            регистрация, логин"]:::presenter
+            UserController["UserController
+            профиль"]:::presenter
+            InviteController["InviteController
+            приглашения"]:::presenter
+            RoleController["RoleController
+            роли и права"]:::presenter
+        end
+
+        subgraph "Dependencies"
+            GetCurrentUserDep["get_current_user()
+            (получение пользователя)"]:::presenter
+            RequireAdminDep["require_admin()
+            (проверка прав)"]:::presenter
+        end
+
+        subgraph "Presenters & DTOs"
+            JSONPresenter["JSONPresenter"]:::presenter
+            UserDTO["UserDTO"]:::presenter
+            InviteDTO["InviteDTO"]:::presenter
+            RoleDTO["RoleDTO"]:::presenter
+        end
+    end
+
+    subgraph "Слой 2: Use Cases"
+        direction TB
+
+        RegisterUC["RegisterUserUseCase"]:::service
+        LoginUC["LoginUseCase"]:::service
+        ConfirmEmailUC["ConfirmEmailUseCase"]:::service
+        ResetPasswordUC["ResetPasswordUseCase"]:::service
+
+        CreateInviteUC["CreateInviteUseCase"]:::service
+        AcceptInviteUC["AcceptInviteUseCase"]:::service
+        DeclineInviteUC["DeclineInviteUseCase"]:::service
+
+        CreateRoleUC["CreateRoleUseCase"]:::service
+        AssignRoleUC["AssignRoleUseCase"]:::service
+        CheckPermissionUC["CheckPermissionUseCase"]:::service
+
+        UpdateProfileUC["UpdateProfileUseCase"]:::service
+        DeleteUserUC["DeleteUserUseCase"]:::service
+    end
+
+    subgraph "Слой 1: Domain"
+        direction TB
+
+        UserEntity["User Entity"]:::domain
+        InviteEntity["Invite Entity"]:::domain
+        RoleEntity["Role Entity"]:::domain
+        MembershipEntity["HomeMembership Entity"]:::domain
+
+        EmailVO["Email Value Object"]:::domain
+        PasswordVO["Password Value Object"]:::domain
+        PermissionsVO["Permissions Value Object"]:::domain
+
+        UserRegistered["UserRegistered Event"]:::domain
+        UserJoinedHome["UserJoinedHome Event"]:::domain
+        UserDeleted["UserDeleted Event"]:::domain
+        InviteAccepted["InviteAccepted Event"]:::domain
+
+        PasswordService["PasswordService
+        (хэширование)"]:::service
+        TokenService["TokenService
+        (JWT генерация)"]:::service
+    end
+
+    %% Связи (аналогично Heating Control)
+    DIContainer --> PostgresUserRepo
+    DIContainer --> PostgresInviteRepo
+    DIContainer --> PostgresRoleRepo
+    DIContainer --> PostgresMembershipRepo
+    DIContainer --> SMTPEmailSender
+    DIContainer --> KafkaPublisherImpl
+    DIContainer --> KafkaSubscriberImpl
+    DIContainer --> RedisTokenStore
+    DIContainer --> PasswordService
+    DIContainer --> TokenService
+    DIContainer --> RegisterUC
+    DIContainer --> LoginUC
+    DIContainer --> CreateInviteUC
+    DIContainer --> AcceptInviteUC
+
+    FastAPI --> AuthRouter
+    FastAPI --> UserRouter
+    FastAPI --> InviteRouter
+    FastAPI --> RoleRouter
+
+    AuthRouter --> AuthController
+    UserRouter --> UserController
+    InviteRouter --> InviteController
+    RoleRouter --> RoleController
+
+    AuthController --> GetCurrentUserDep
+    UserController --> GetCurrentUserDep
+    InviteController --> GetCurrentUserDep
+    InviteController --> RequireAdminDep
+    RoleController --> RequireAdminDep
+
+    AuthController --> RegisterUC
+    AuthController --> LoginUC
+    AuthController --> ConfirmEmailUC
+    UserController --> UpdateProfileUC
+    UserController --> DeleteUserUC
+    InviteController --> CreateInviteUC
+    InviteController --> AcceptInviteUC
+    InviteController --> DeclineInviteUC
+    RoleController --> CreateRoleUC
+    RoleController --> AssignRoleUC
+    RoleController --> CheckPermissionUC
+
+    AuthController --> JSONPresenter
+    AuthController --> UserDTO
+    InviteController --> InviteDTO
+    RoleController --> RoleDTO
+
+    RegisterUC --> IUserRepo
+    RegisterUC --> IEmailGateway
+    RegisterUC --> IEventPublisher
+    RegisterUC --> UserEntity
+    RegisterUC --> EmailVO
+    RegisterUC --> PasswordVO
+    RegisterUC --> PasswordService
+    RegisterUC --> TokenService
+    RegisterUC --> UserRegistered
+
+    LoginUC --> IUserRepo
+    LoginUC --> PasswordService
+    LoginUC --> TokenService
+    LoginUC --> RedisTokenStore
+
+    CreateInviteUC --> IInviteRepo
+    CreateInviteUC --> IEmailGateway
+    CreateInviteUC --> IEventPublisher
+    CreateInviteUC --> InviteEntity
+    CreateInviteUC --> EmailVO
+
+    AcceptInviteUC --> IInviteRepo
+    AcceptInviteUC --> IMembershipRepo
+    AcceptInviteUC --> IEventPublisher
+    AcceptInviteUC --> InviteEntity
+    AcceptInviteUC --> MembershipEntity
+    AcceptInviteUC --> UserJoinedHome
+    AcceptInviteUC --> InviteAccepted
+
+    CreateRoleUC --> IRoleRepo
+    CreateRoleUC --> RoleEntity
+    CreateRoleUC --> PermissionsVO
+
+    AssignRoleUC --> IUserRepo
+    AssignRoleUC --> IRoleRepo
+    AssignRoleUC --> IMembershipRepo
+
+    IUserRepo -.-> PostgresUserRepo
+    IInviteRepo -.-> PostgresInviteRepo
+    IRoleRepo -.-> PostgresRoleRepo
+    IMembershipRepo -.-> PostgresMembershipRepo
+    IEmailGateway -.-> SMTPEmailSender
+    IEventPublisher -.-> KafkaPublisherImpl
+    IEventSubscriber -.-> KafkaSubscriberImpl
+
+    PostgresUserRepo --> AsyncPG
+    PostgresInviteRepo --> AsyncPG
+    PostgresRoleRepo --> AsyncPG
+    PostgresMembershipRepo --> AsyncPG
+    AsyncPG --> PG
+
+    SMTPEmailSender --> EmailSvc
+    RedisTokenStore --> RedisClient
+    RedisClient --> Redis
+
+    KafkaPublisherImpl --> Aiokafka
+    KafkaSubscriberImpl --> Aiokafka
+    Aiokafka --> Kafka

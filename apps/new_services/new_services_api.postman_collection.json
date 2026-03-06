@@ -1,0 +1,3674 @@
+{
+	"info": {
+		"_postman_id": "0df2a1c1-107a-4f39-9e5d-9f10d7840f2f",
+		"name": "Smart Home API",
+		"description": "Коллекция с тестами для всех микросервисов",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "23428268"
+	},
+	"item": [
+		{
+			"name": "Authentication & Users",
+			"item": [
+				{
+					"name": "1. Регистрация",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 201 - пользователь создан', function() {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test('Response has user data', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('id');",
+									"    pm.expect(jsonData).to.have.property('email');",
+									"    pm.expect(jsonData).to.have.property('fullName');",
+									"    pm.expect(jsonData).to.have.property('status', 'pending');",
+									"});",
+									"",
+									"pm.test('Email matches request', function() {",
+									"    var jsonData = pm.response.json();",
+									"    var requestData = JSON.parse(pm.request.body.raw);",
+									"    pm.expect(jsonData.email).to.equal(requestData.email);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"test_{{$randomInt}}@example.com\",\n  \"password\": \"password123\",\n  \"fullName\": \"Тестовый Пользователь\",\n  \"phone\": \"+7999{{$randomInt}}\"\n}"
+						},
+						"url": {
+							"raw": "{{USER_SERVICE}}/auth/register",
+							"host": [
+								"{{USER_SERVICE}}"
+							],
+							"path": [
+								"auth",
+								"register"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "2. Подтверждение email",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 200 - email подтвержден', function() {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{USER_SERVICE}}/auth/confirm-email?token={{test-confirmation-token}}",
+							"host": [
+								"{{USER_SERVICE}}"
+							],
+							"path": [
+								"auth",
+								"confirm-email"
+							],
+							"query": [
+								{
+									"key": "token",
+									"value": "{{test-confirmation-token}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "3. Вход в систему",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 200 - успешный вход', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response has tokens', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('accessToken');",
+									"    pm.expect(jsonData.accessToken).to.match(/^eyJ/);",
+									"    pm.expect(jsonData).to.have.property('refreshToken');",
+									"    pm.expect(jsonData).to.have.property('expiresIn');",
+									"    pm.expect(jsonData).to.have.property('user');",
+									"    pm.collectionVariables.set('accessToken', jsonData.accessToken);",
+									"    pm.collectionVariables.set('refreshToken', jsonData.refreshToken);",
+									"    pm.collectionVariables.set('userId', jsonData.user.id);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\"\n}"
+						},
+						"url": {
+							"raw": "{{USER_SERVICE}}/auth/login",
+							"host": [
+								"{{USER_SERVICE}}"
+							],
+							"path": [
+								"auth",
+								"login"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "4. Обновление токена",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 200 - токен обновлен', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Has new access token', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('accessToken');",
+									"    pm.expect(jsonData).to.have.property('expiresIn');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{USER_SERVICE}}/auth/refresh?refreshToken={{refreshToken}}",
+							"host": [
+								"{{USER_SERVICE}}"
+							],
+							"path": [
+								"auth",
+								"refresh"
+							],
+							"query": [
+								{
+									"key": "refreshToken",
+									"value": "{{refreshToken}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "5. Выход из системы",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 204 - успешный выход', function() {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{USER_SERVICE}}/auth/logout",
+							"host": [
+								"{{USER_SERVICE}}"
+							],
+							"path": [
+								"auth",
+								"logout"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "6. Получить профиль",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('User data is valid', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('id');",
+									"    pm.expect(jsonData).to.have.property('email');",
+									"    pm.expect(jsonData).to.have.property('fullName');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{USER_SERVICE}}/users/me",
+							"host": [
+								"{{USER_SERVICE}}"
+							],
+							"path": [
+								"users",
+								"me"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "7. Обновить профиль",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 200 - профиль обновлен', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Data updated', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.fullName).to.equal('Новое Имя');",
+									"    pm.expect(jsonData.phone).to.equal('79998887766');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{USER_SERVICE}}/users/me?fullName=Новое Имя&phone=79998887766",
+							"host": [
+								"{{USER_SERVICE}}"
+							],
+							"path": [
+								"users",
+								"me"
+							],
+							"query": [
+								{
+									"key": "fullName",
+									"value": "Новое Имя"
+								},
+								{
+									"key": "phone",
+									"value": "79998887766"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "8. Изменить пароль",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 204 - пароль изменен', function() {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{USER_SERVICE}}/users/me/password?currentPassword=password123&newPassword=newpassword123",
+							"host": [
+								"{{USER_SERVICE}}"
+							],
+							"path": [
+								"users",
+								"me",
+								"password"
+							],
+							"query": [
+								{
+									"key": "currentPassword",
+									"value": "password123"
+								},
+								{
+									"key": "newPassword",
+									"value": "newpassword123"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "9. Создать роль",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 201 - роль создана', function() {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test('Role has correct structure', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('id');",
+									"    pm.expect(jsonData).to.have.property('name', 'Администратор');",
+									"    pm.expect(jsonData.permissions).to.include('admin');",
+									"    pm.collectionVariables.set('roleId', jsonData.id);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Администратор\",\n  \"homeId\": \"{{HOME_ID}}\",\n  \"permissions\": [\"view\", \"control\", \"manage\", \"admin\"]\n}"
+						},
+						"url": {
+							"raw": "{{USER_SERVICE}}/roles",
+							"host": [
+								"{{USER_SERVICE}}"
+							],
+							"path": [
+								"roles"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "10. Получить роли",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Returns array of roles', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"    if(jsonData.length > 0) {",
+									"        pm.expect(jsonData[0]).to.have.property('name');",
+									"        pm.expect(jsonData[0]).to.have.property('permissions');",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{USER_SERVICE}}/roles?homeId={{HOME_ID}}",
+							"host": [
+								"{{USER_SERVICE}}"
+							],
+							"path": [
+								"roles"
+							],
+							"query": [
+								{
+									"key": "homeId",
+									"value": "{{HOME_ID}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "11. Создать приглашение",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 201 - приглашение создано', function() {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test('Invite has correct structure', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('id');",
+									"    pm.expect(jsonData).to.have.property('email', 'friend@example.com');",
+									"    pm.expect(jsonData).to.have.property('status', 'pending');",
+									"    pm.expect(jsonData).to.have.property('expiresAt');",
+									"    pm.collectionVariables.set('inviteId', jsonData.id);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"friend@example.com\",\n  \"homeId\": \"{{HOME_ID}}\",\n  \"role\": \"member\",\n  \"message\": \"Добро пожаловать!\"\n}"
+						},
+						"url": {
+							"raw": "{{USER_SERVICE}}/invites",
+							"host": [
+								"{{USER_SERVICE}}"
+							],
+							"path": [
+								"invites"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "12. Получить приглашения",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Returns invites array', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{USER_SERVICE}}/invites/received?status=pending",
+							"host": [
+								"{{USER_SERVICE}}"
+							],
+							"path": [
+								"invites",
+								"received"
+							],
+							"query": [
+								{
+									"key": "status",
+									"value": "pending"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "13. Принять приглашение",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 200 - приглашение принято', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Returns home info', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('homeId');",
+									"    pm.expect(jsonData).to.have.property('role');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{USER_SERVICE}}/invites/{{inviteId}}/accept",
+							"host": [
+								"{{USER_SERVICE}}"
+							],
+							"path": [
+								"invites",
+								"{{inviteId}}",
+								"accept"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "14. Назначить роль пользователю",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 200 - роль назначена', function() {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{USER_SERVICE}}/users/{{userId}}/roles?roleId={{roleId}}&homeId={{HOME_ID}}",
+							"host": [
+								"{{USER_SERVICE}}"
+							],
+							"path": [
+								"users",
+								"{{userId}}",
+								"roles"
+							],
+							"query": [
+								{
+									"key": "roleId",
+									"value": "{{roleId}}"
+								},
+								{
+									"key": "homeId",
+									"value": "{{HOME_ID}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "15. Получить подписку",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Subscription data valid', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('planId');",
+									"    pm.expect(jsonData).to.have.property('status');",
+									"    pm.expect(jsonData).to.have.property('features');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{USER_SERVICE}}/subscriptions/current",
+							"host": [
+								"{{USER_SERVICE}}"
+							],
+							"path": [
+								"subscriptions",
+								"current"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "16. Тарифные планы",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Returns plans array', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"    pm.expect(jsonData.length).to.be.at.least(2);",
+									"    pm.expect(jsonData[0]).to.have.property('id');",
+									"    pm.expect(jsonData[0]).to.have.property('price');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{USER_SERVICE}}/subscriptions/plans",
+							"host": [
+								"{{USER_SERVICE}}"
+							],
+							"path": [
+								"subscriptions",
+								"plans"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "17. Сменить тариф",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 200 - тариф изменен', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('New plan applied', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.planId).to.equal('premium');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{USER_SERVICE}}/subscriptions/change?planId=premium",
+							"host": [
+								"{{USER_SERVICE}}"
+							],
+							"path": [
+								"subscriptions",
+								"change"
+							],
+							"query": [
+								{
+									"key": "planId",
+									"value": "premium"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "18. Удалить аккаунт",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 202 - запрос принят', function() {",
+									"    pm.response.to.have.status(202);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"reason\": \"Тестирование\"\n}"
+						},
+						"url": {
+							"raw": "{{USER_SERVICE}}/users/me",
+							"host": [
+								"{{USER_SERVICE}}"
+							],
+							"path": [
+								"users",
+								"me"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"description": "User Service - порт 8086"
+		},
+		{
+			"name": "Device Registry",
+			"item": [
+				{
+					"name": "1. Создать дом",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 201 - дом создан', function() {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test('Home has correct structure', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('id');",
+									"    pm.expect(jsonData).to.have.property('name', 'Мой дом');",
+									"    pm.expect(jsonData).to.have.property('ownerId');",
+									"    pm.collectionVariables.set('HOME_ID', jsonData.id);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Мой дом\",\n  \"address\": \"ул. Ленина, д. 1\",\n  \"timezone\": \"Europe/Moscow\"\n}"
+						},
+						"url": {
+							"raw": "{{DEVICE_SERVICE}}/homes",
+							"host": [
+								"{{DEVICE_SERVICE}}"
+							],
+							"path": [
+								"homes"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "2. Получить дом",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Home data matches', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.id).to.equal(pm.collectionVariables.get('HOME_ID'));",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{DEVICE_SERVICE}}/homes/{{HOME_ID}}",
+							"host": [
+								"{{DEVICE_SERVICE}}"
+							],
+							"path": [
+								"homes",
+								"{{HOME_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "3. Получить модели устройств",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Returns models array', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"    if(jsonData.length > 0) {",
+									"        pm.expect(jsonData[0]).to.have.property('vendor');",
+									"        pm.expect(jsonData[0]).to.have.property('type');",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{DEVICE_SERVICE}}/models?type=thermostat",
+							"host": [
+								"{{DEVICE_SERVICE}}"
+							],
+							"path": [
+								"models"
+							],
+							"query": [
+								{
+									"key": "type",
+									"value": "thermostat"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "4. Зарегистрировать устройство",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 201 - устройство создано', function() {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test('Device has correct structure', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('id');",
+									"    pm.expect(jsonData).to.have.property('serialNumber');",
+									"    pm.expect(jsonData).to.have.property('status', 'inactive');",
+									"    pm.collectionVariables.set('DEVICE_ID', jsonData.id);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"serialNumber\": \"SN{{$randomInt}}\",\n  \"modelId\": \"11111111-1111-1111-1111-111111111111\",\n  \"homeId\": \"{{HOME_ID}}\",\n  \"name\": \"Термостат в спальне\"\n}"
+						},
+						"url": {
+							"raw": "{{DEVICE_SERVICE}}/devices",
+							"host": [
+								"{{DEVICE_SERVICE}}"
+							],
+							"path": [
+								"devices"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "5. Получить устройство",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Device data matches', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.id).to.equal(pm.collectionVariables.get('DEVICE_ID'));",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{DEVICE_SERVICE}}/devices/{{DEVICE_ID}}",
+							"host": [
+								"{{DEVICE_SERVICE}}"
+							],
+							"path": [
+								"devices",
+								"{{DEVICE_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "6. Обновить устройство",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 200 - устройство обновлено', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Name updated', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.name).to.equal('Новое имя устройства');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{DEVICE_SERVICE}}/devices/{{DEVICE_ID}}?name=Новое имя устройства&settings",
+							"host": [
+								"{{DEVICE_SERVICE}}"
+							],
+							"path": [
+								"devices",
+								"{{DEVICE_ID}}"
+							],
+							"query": [
+								{
+									"key": "name",
+									"value": "Новое имя устройства"
+								},
+								{
+									"key": "settings",
+									"value": "[object Object]"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "7. Получить устройства дома",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Returns devices array', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{DEVICE_SERVICE}}/homes/{{HOME_ID}}/devices",
+							"host": [
+								"{{DEVICE_SERVICE}}"
+							],
+							"path": [
+								"homes",
+								"{{HOME_ID}}",
+								"devices"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "8. Получить пользователей дома",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Returns users array', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"    if(jsonData.length > 0) {",
+									"        pm.expect(jsonData[0]).to.have.property('userId');",
+									"        pm.expect(jsonData[0]).to.have.property('email');",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{DEVICE_SERVICE}}/homes/{{HOME_ID}}/users",
+							"host": [
+								"{{DEVICE_SERVICE}}"
+							],
+							"path": [
+								"homes",
+								"{{HOME_ID}}",
+								"users"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "9. Удалить устройство",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 204 - устройство удалено', function() {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{DEVICE_SERVICE}}/devices/{{DEVICE_ID}}",
+							"host": [
+								"{{DEVICE_SERVICE}}"
+							],
+							"path": [
+								"devices",
+								"{{DEVICE_ID}}"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"description": "Device Registry - порт 8088"
+		},
+		{
+			"name": "Heating Control",
+			"item": [
+				{
+					"name": "1. Получить состояние термостата",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Thermostat data valid', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('deviceId');",
+									"    pm.expect(jsonData).to.have.property('currentTemp');",
+									"    pm.expect(jsonData).to.have.property('mode');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{HEATING_SERVICE}}/thermostats/{{DEVICE_ID}}",
+							"host": [
+								"{{HEATING_SERVICE}}"
+							],
+							"path": [
+								"thermostats",
+								"{{DEVICE_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "2. Установить температуру",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 202 - команда принята', function() {",
+									"    pm.response.to.have.status(202);",
+									"});",
+									"",
+									"pm.test('Returns command ID', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('commandId');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"targetTemp\": 22.5\n}"
+						},
+						"url": {
+							"raw": "{{HEATING_SERVICE}}/thermostats/{{DEVICE_ID}}/target",
+							"host": [
+								"{{HEATING_SERVICE}}"
+							],
+							"path": [
+								"thermostats",
+								"{{DEVICE_ID}}",
+								"target"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "3. Изменить режим",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 202 - команда принята', function() {",
+									"    pm.response.to.have.status(202);",
+									"});",
+									"",
+									"pm.test('Returns command ID', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('commandId');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"mode\": \"heat\"\n}"
+						},
+						"url": {
+							"raw": "{{HEATING_SERVICE}}/thermostats/{{DEVICE_ID}}/mode",
+							"host": [
+								"{{HEATING_SERVICE}}"
+							],
+							"path": [
+								"thermostats",
+								"{{DEVICE_ID}}",
+								"mode"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "4. Получить историю",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Returns readings array', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"    if(jsonData.length > 0) {",
+									"        pm.expect(jsonData[0]).to.have.property('temperature');",
+									"        pm.expect(jsonData[0]).to.have.property('timestamp');",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{HEATING_SERVICE}}/thermostats/{{DEVICE_ID}}/history?limit=24",
+							"host": [
+								"{{HEATING_SERVICE}}"
+							],
+							"path": [
+								"thermostats",
+								"{{DEVICE_ID}}",
+								"history"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "24"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "5. Создать расписание",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 201 - расписание создано', function() {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test('Schedule has correct structure', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('id');",
+									"    pm.expect(jsonData).to.have.property('deviceId');",
+									"    pm.expect(jsonData).to.have.property('daysOfWeek');",
+									"    pm.expect(jsonData).to.have.property('time', '07:00');",
+									"    pm.collectionVariables.set('SCHEDULE_ID', jsonData.id);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"deviceId\": \"{{DEVICE_ID}}\",\n  \"name\": \"Утро\",\n  \"daysOfWeek\": [\"mon\", \"tue\", \"wed\", \"thu\", \"fri\"],\n  \"time\": \"07:00\",\n  \"targetTemp\": 22.5\n}"
+						},
+						"url": {
+							"raw": "{{HEATING_SERVICE}}/schedules",
+							"host": [
+								"{{HEATING_SERVICE}}"
+							],
+							"path": [
+								"schedules"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "6. Получить расписания устройства",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Returns schedules array', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{HEATING_SERVICE}}/thermostats/{{DEVICE_ID}}/schedules",
+							"host": [
+								"{{HEATING_SERVICE}}"
+							],
+							"path": [
+								"thermostats",
+								"{{DEVICE_ID}}",
+								"schedules"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "7. Получить расписание",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{HEATING_SERVICE}}/schedules/{{SCHEDULE_ID}}",
+							"host": [
+								"{{HEATING_SERVICE}}"
+							],
+							"path": [
+								"schedules",
+								"{{SCHEDULE_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "8. Удалить расписание",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 204 - расписание удалено', function() {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{HEATING_SERVICE}}/schedules/{{SCHEDULE_ID}}",
+							"host": [
+								"{{HEATING_SERVICE}}"
+							],
+							"path": [
+								"schedules",
+								"{{SCHEDULE_ID}}"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"description": "Heating Control - порт 8082"
+		},
+		{
+			"name": "Lighting Control",
+			"item": [
+				{
+					"name": "1. Получить состояние лампы",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Light data valid', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('deviceId');",
+									"    pm.expect(jsonData).to.have.property('power');",
+									"    pm.expect(jsonData).to.have.property('brightness');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{LIGHTING_SERVICE}}/lights/{{DEVICE_ID}}",
+							"host": [
+								"{{LIGHTING_SERVICE}}"
+							],
+							"path": [
+								"lights",
+								"{{DEVICE_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "2. Включить/выключить",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 202 - команда принята', function() {",
+									"    pm.response.to.have.status(202);",
+									"});",
+									"",
+									"pm.test('Returns command ID', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('commandId');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"state\": \"on\"\n}"
+						},
+						"url": {
+							"raw": "{{LIGHTING_SERVICE}}/lights/{{DEVICE_ID}}/power",
+							"host": [
+								"{{LIGHTING_SERVICE}}"
+							],
+							"path": [
+								"lights",
+								"{{DEVICE_ID}}",
+								"power"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "3. Установить яркость",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 202 - команда принята', function() {",
+									"    pm.response.to.have.status(202);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"brightness\": 75\n}"
+						},
+						"url": {
+							"raw": "{{LIGHTING_SERVICE}}/lights/{{DEVICE_ID}}/brightness",
+							"host": [
+								"{{LIGHTING_SERVICE}}"
+							],
+							"path": [
+								"lights",
+								"{{DEVICE_ID}}",
+								"brightness"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "4. Установить цвет",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 202 - команда принята', function() {",
+									"    pm.response.to.have.status(202);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"hex\": \"#FF5733\"\n}"
+						},
+						"url": {
+							"raw": "{{LIGHTING_SERVICE}}/lights/{{DEVICE_ID}}/color",
+							"host": [
+								"{{LIGHTING_SERVICE}}"
+							],
+							"path": [
+								"lights",
+								"{{DEVICE_ID}}",
+								"color"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "5. Создать группу",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 201 - группа создана', function() {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test('Group has correct structure', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('id');",
+									"    pm.expect(jsonData).to.have.property('name', 'Гостиная');",
+									"    pm.expect(jsonData.deviceIds).to.be.an('array');",
+									"    pm.collectionVariables.set('GROUP_ID', jsonData.id);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Гостиная\",\n  \"deviceIds\": [\"{{DEVICE_ID}}\"]\n}"
+						},
+						"url": {
+							"raw": "{{LIGHTING_SERVICE}}/groups",
+							"host": [
+								"{{LIGHTING_SERVICE}}"
+							],
+							"path": [
+								"groups"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "6. Получить группы",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Returns groups array', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{LIGHTING_SERVICE}}/groups?homeId={{HOME_ID}}",
+							"host": [
+								"{{LIGHTING_SERVICE}}"
+							],
+							"path": [
+								"groups"
+							],
+							"query": [
+								{
+									"key": "homeId",
+									"value": "{{HOME_ID}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "7. Управление группой",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 202 - команда принята', function() {",
+									"    pm.response.to.have.status(202);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"state\": \"off\"\n}"
+						},
+						"url": {
+							"raw": "{{LIGHTING_SERVICE}}/groups/{{GROUP_ID}}/power",
+							"host": [
+								"{{LIGHTING_SERVICE}}"
+							],
+							"path": [
+								"groups",
+								"{{GROUP_ID}}",
+								"power"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "8. Создать сцену",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 201 - сцена создана', function() {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test('Scene has correct structure', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('id');",
+									"    pm.expect(jsonData).to.have.property('name', 'Кино');",
+									"    pm.expect(jsonData.actions).to.be.an('array');",
+									"    pm.collectionVariables.set('SCENE_ID', jsonData.id);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Кино\",\n  \"actions\": [{\"deviceId\": \"{{DEVICE_ID}}\", \"power\": true, \"brightness\": 20}]\n}"
+						},
+						"url": {
+							"raw": "{{LIGHTING_SERVICE}}/scenes",
+							"host": [
+								"{{LIGHTING_SERVICE}}"
+							],
+							"path": [
+								"scenes"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "9. Получить сцены",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Returns scenes array', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{LIGHTING_SERVICE}}/scenes?homeId={{HOME_ID}}",
+							"host": [
+								"{{LIGHTING_SERVICE}}"
+							],
+							"path": [
+								"scenes"
+							],
+							"query": [
+								{
+									"key": "homeId",
+									"value": "{{HOME_ID}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "10. Активировать сцену",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 202 - сцена активирована', function() {",
+									"    pm.response.to.have.status(202);",
+									"});",
+									"",
+									"pm.test('Returns execution ID', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('executionId');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{LIGHTING_SERVICE}}/scenes/{{SCENE_ID}}/activate",
+							"host": [
+								"{{LIGHTING_SERVICE}}"
+							],
+							"path": [
+								"scenes",
+								"{{SCENE_ID}}",
+								"activate"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"description": "Lighting Control - порт 8083"
+		},
+		{
+			"name": "Access Control",
+			"item": [
+				{
+					"name": "1. Закрыть замок",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 202 - команда принята', function() {",
+									"    pm.response.to.have.status(202);",
+									"});",
+									"",
+									"pm.test('Returns command ID', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('commandId');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{ACCESS_SERVICE}}/locks/{{DEVICE_ID}}/lock",
+							"host": [
+								"{{ACCESS_SERVICE}}"
+							],
+							"path": [
+								"locks",
+								"{{DEVICE_ID}}",
+								"lock"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "2. Открыть замок",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 202 - команда принята', function() {",
+									"    pm.response.to.have.status(202);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{ACCESS_SERVICE}}/locks/{{DEVICE_ID}}/unlock",
+							"host": [
+								"{{ACCESS_SERVICE}}"
+							],
+							"path": [
+								"locks",
+								"{{DEVICE_ID}}",
+								"unlock"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "3. Состояние замка",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Lock data valid', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('deviceId');",
+									"    pm.expect(jsonData).to.have.property('state');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{ACCESS_SERVICE}}/locks/{{DEVICE_ID}}",
+							"host": [
+								"{{ACCESS_SERVICE}}"
+							],
+							"path": [
+								"locks",
+								"{{DEVICE_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "4. Открыть ворота",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 202 - команда принята', function() {",
+									"    pm.response.to.have.status(202);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{ACCESS_SERVICE}}/gates/{{DEVICE_ID}}/open",
+							"host": [
+								"{{ACCESS_SERVICE}}"
+							],
+							"path": [
+								"gates",
+								"{{DEVICE_ID}}",
+								"open"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "5. Закрыть ворота",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 202 - команда принята', function() {",
+									"    pm.response.to.have.status(202);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{ACCESS_SERVICE}}/gates/{{DEVICE_ID}}/close",
+							"host": [
+								"{{ACCESS_SERVICE}}"
+							],
+							"path": [
+								"gates",
+								"{{DEVICE_ID}}",
+								"close"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "6. Остановить ворота",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 202 - команда принята', function() {",
+									"    pm.response.to.have.status(202);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{ACCESS_SERVICE}}/gates/{{DEVICE_ID}}/stop",
+							"host": [
+								"{{ACCESS_SERVICE}}"
+							],
+							"path": [
+								"gates",
+								"{{DEVICE_ID}}",
+								"stop"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "7. Состояние ворот",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Gate data valid', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('deviceId');",
+									"    pm.expect(jsonData).to.have.property('state');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{ACCESS_SERVICE}}/gates/{{DEVICE_ID}}",
+							"host": [
+								"{{ACCESS_SERVICE}}"
+							],
+							"path": [
+								"gates",
+								"{{DEVICE_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "8. Назначить права",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 201 - права назначены', function() {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test('Permission has correct structure', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('id');",
+									"    pm.expect(jsonData).to.have.property('userId');",
+									"    pm.expect(jsonData).to.have.property('deviceId');",
+									"    pm.expect(jsonData.actions).to.include('lock');",
+									"    pm.collectionVariables.set('PERMISSION_ID', jsonData.id);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"userId\": \"{{userId}}\",\n  \"deviceId\": \"{{DEVICE_ID}}\",\n  \"actions\": [\"lock\", \"unlock\", \"view\"]\n}"
+						},
+						"url": {
+							"raw": "{{ACCESS_SERVICE}}/permissions",
+							"host": [
+								"{{ACCESS_SERVICE}}"
+							],
+							"path": [
+								"permissions"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "9. Получить права пользователя",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Returns permissions array', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{ACCESS_SERVICE}}/permissions/user/{{userId}}",
+							"host": [
+								"{{ACCESS_SERVICE}}"
+							],
+							"path": [
+								"permissions",
+								"user",
+								"{{userId}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "10. Создать временный код",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 201 - код создан', function() {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test('Code has correct structure', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('id');",
+									"    pm.expect(jsonData).to.have.property('code');",
+									"    pm.expect(jsonData).to.have.property('validFrom');",
+									"    pm.expect(jsonData).to.have.property('validTo');",
+									"    pm.expect(jsonData.code).to.match(/^\\d{6}$/);",
+									"    pm.collectionVariables.set('CODE_ID', jsonData.id);",
+									"    pm.collectionVariables.set('TEMP_CODE', jsonData.code);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"phone\": \"+79991234567\",\n  \"deviceId\": \"{{DEVICE_ID}}\",\n  \"validFrom\": \"{{$isoTimestamp}}\",\n  \"validTo\": \"{{$isoTimestamp}}\",\n  \"maxUses\": 1\n}"
+						},
+						"url": {
+							"raw": "{{ACCESS_SERVICE}}/access/temporary",
+							"host": [
+								"{{ACCESS_SERVICE}}"
+							],
+							"path": [
+								"access",
+								"temporary"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "11. Проверить код",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 200 - код проверен', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Returns access result', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('granted');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"code\": \"{{TEMP_CODE}}\",\n  \"deviceId\": \"{{DEVICE_ID}}\"\n}"
+						},
+						"url": {
+							"raw": "{{ACCESS_SERVICE}}/access/verify-code",
+							"host": [
+								"{{ACCESS_SERVICE}}"
+							],
+							"path": [
+								"access",
+								"verify-code"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "12. Получить активные коды",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Returns codes array', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{ACCESS_SERVICE}}/access/temporary/active?deviceId={{DEVICE_ID}}",
+							"host": [
+								"{{ACCESS_SERVICE}}"
+							],
+							"path": [
+								"access",
+								"temporary",
+								"active"
+							],
+							"query": [
+								{
+									"key": "deviceId",
+									"value": "{{DEVICE_ID}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "13. Получить аудит",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Returns audit entries array', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"    if(jsonData.length > 0) {",
+									"        pm.expect(jsonData[0]).to.have.property('action');",
+									"        pm.expect(jsonData[0]).to.have.property('timestamp');",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{ACCESS_SERVICE}}/audit?limit=10",
+							"host": [
+								"{{ACCESS_SERVICE}}"
+							],
+							"path": [
+								"audit"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "10"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "14. Отозвать права",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 204 - права отозваны', function() {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{ACCESS_SERVICE}}/permissions/{{PERMISSION_ID}}",
+							"host": [
+								"{{ACCESS_SERVICE}}"
+							],
+							"path": [
+								"permissions",
+								"{{PERMISSION_ID}}"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"description": "Access Control - порт 8084"
+		},
+		{
+			"name": "Surveillance",
+			"item": [
+				{
+					"name": "1. Получить камеры",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Returns cameras array', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"    if(jsonData.length > 0) {",
+									"        pm.expect(jsonData[0]).to.have.property('deviceId');",
+									"        pm.expect(jsonData[0]).to.have.property('status');",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{SURVEILLANCE_SERVICE}}/cameras?homeId={{HOME_ID}}",
+							"host": [
+								"{{SURVEILLANCE_SERVICE}}"
+							],
+							"path": [
+								"cameras"
+							],
+							"query": [
+								{
+									"key": "homeId",
+									"value": "{{HOME_ID}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "2. Получить камеру",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Camera data valid', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('deviceId');",
+									"    pm.expect(jsonData).to.have.property('name');",
+									"    pm.expect(jsonData).to.have.property('status');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{SURVEILLANCE_SERVICE}}/cameras/{{DEVICE_ID}}",
+							"host": [
+								"{{SURVEILLANCE_SERVICE}}"
+							],
+							"path": [
+								"cameras",
+								"{{DEVICE_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "3. Получить поток",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Returns stream URL', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('url');",
+									"    pm.expect(jsonData.url).to.include('stream');",
+									"    pm.expect(jsonData).to.have.property('expiresAt');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{SURVEILLANCE_SERVICE}}/cameras/{{DEVICE_ID}}/stream?protocol=hls",
+							"host": [
+								"{{SURVEILLANCE_SERVICE}}"
+							],
+							"path": [
+								"cameras",
+								"{{DEVICE_ID}}",
+								"stream"
+							],
+							"query": [
+								{
+									"key": "protocol",
+									"value": "hls"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "4. Получить снимок",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response is image', function() {",
+									"    pm.expect(pm.response.headers.get('content-type')).to.include('image');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{SURVEILLANCE_SERVICE}}/cameras/{{DEVICE_ID}}/snapshot",
+							"host": [
+								"{{SURVEILLANCE_SERVICE}}"
+							],
+							"path": [
+								"cameras",
+								"{{DEVICE_ID}}",
+								"snapshot"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "5. Начать запись",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 202 - запись начата', function() {",
+									"    pm.response.to.have.status(202);",
+									"});",
+									"",
+									"pm.test('Returns recording ID', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('recordingId');",
+									"    pm.collectionVariables.set('RECORDING_ID', jsonData.recordingId);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"duration\": 60\n}"
+						},
+						"url": {
+							"raw": "{{SURVEILLANCE_SERVICE}}/cameras/{{DEVICE_ID}}/record",
+							"host": [
+								"{{SURVEILLANCE_SERVICE}}"
+							],
+							"path": [
+								"cameras",
+								"{{DEVICE_ID}}",
+								"record"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "6. Остановить запись",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 202 - запись остановлена', function() {",
+									"    pm.response.to.have.status(202);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{SURVEILLANCE_SERVICE}}/cameras/{{DEVICE_ID}}/stop",
+							"host": [
+								"{{SURVEILLANCE_SERVICE}}"
+							],
+							"path": [
+								"cameras",
+								"{{DEVICE_ID}}",
+								"stop"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "7. Получить записи",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Returns recordings array', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"    if(jsonData.length > 0) {",
+									"        pm.expect(jsonData[0]).to.have.property('id');",
+									"        pm.expect(jsonData[0]).to.have.property('duration');",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{SURVEILLANCE_SERVICE}}/recordings?cameraId={{DEVICE_ID}}",
+							"host": [
+								"{{SURVEILLANCE_SERVICE}}"
+							],
+							"path": [
+								"recordings"
+							],
+							"query": [
+								{
+									"key": "cameraId",
+									"value": "{{DEVICE_ID}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "8. Получить запись",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Recording data valid', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('id');",
+									"    pm.expect(jsonData).to.have.property('startedAt');",
+									"    pm.expect(jsonData).to.have.property('duration');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{SURVEILLANCE_SERVICE}}/recordings/{{RECORDING_ID}}",
+							"host": [
+								"{{SURVEILLANCE_SERVICE}}"
+							],
+							"path": [
+								"recordings",
+								"{{RECORDING_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "9. Получить события",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Returns events array', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"    if(jsonData.length > 0) {",
+									"        pm.expect(jsonData[0]).to.have.property('type');",
+									"        pm.expect(jsonData[0]).to.have.property('timestamp');",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{SURVEILLANCE_SERVICE}}/events?cameraId={{DEVICE_ID}}&type=motion",
+							"host": [
+								"{{SURVEILLANCE_SERVICE}}"
+							],
+							"path": [
+								"events"
+							],
+							"query": [
+								{
+									"key": "cameraId",
+									"value": "{{DEVICE_ID}}"
+								},
+								{
+									"key": "type",
+									"value": "motion"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"description": "Surveillance - порт 8085"
+		},
+		{
+			"name": "Scenarios Engine",
+			"item": [
+				{
+					"name": "1. Создать сценарий",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 201 - сценарий создан', function() {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test('Scenario has correct structure', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('id');",
+									"    pm.expect(jsonData).to.have.property('name', 'Если температура выше 25');",
+									"    pm.expect(jsonData).to.have.property('trigger');",
+									"    pm.expect(jsonData.actions).to.be.an('array');",
+									"    pm.collectionVariables.set('SCENARIO_ID', jsonData.id);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Если температура выше 25\",\n  \"homeId\": \"{{HOME_ID}}\",\n  \"trigger\": {\n    \"type\": \"device\",\n    \"deviceId\": \"{{DEVICE_ID}}\",\n    \"event\": \"temperature_above\",\n    \"value\": 25\n  },\n  \"actions\": [\n    {\n      \"deviceId\": \"{{DEVICE_ID}}\",\n      \"command\": \"turn_on\",\n      \"parameters\": {}\n    }\n  ],\n  \"enabled\": true\n}"
+						},
+						"url": {
+							"raw": "{{SCENARIOS_SERVICE}}/scenarios",
+							"host": [
+								"{{SCENARIOS_SERVICE}}"
+							],
+							"path": [
+								"scenarios"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "2. Получить сценарии",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Returns scenarios array', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{SCENARIOS_SERVICE}}/scenarios?homeId={{HOME_ID}}",
+							"host": [
+								"{{SCENARIOS_SERVICE}}"
+							],
+							"path": [
+								"scenarios"
+							],
+							"query": [
+								{
+									"key": "homeId",
+									"value": "{{HOME_ID}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "3. Получить сценарий",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Scenario data matches', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.id).to.equal(pm.collectionVariables.get('SCENARIO_ID'));",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{SCENARIOS_SERVICE}}/scenarios/{{SCENARIO_ID}}",
+							"host": [
+								"{{SCENARIOS_SERVICE}}"
+							],
+							"path": [
+								"scenarios",
+								"{{SCENARIO_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "4. Обновить сценарий",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 200 - сценарий обновлен', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Name updated', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData.name).to.equal('Обновленный сценарий');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Обновленный сценарий\",\n  \"enabled\": false\n}"
+						},
+						"url": {
+							"raw": "{{SCENARIOS_SERVICE}}/scenarios/{{SCENARIO_ID}}",
+							"host": [
+								"{{SCENARIOS_SERVICE}}"
+							],
+							"path": [
+								"scenarios",
+								"{{SCENARIO_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "5. Включить сценарий",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 204 - сценарий включен', function() {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{SCENARIOS_SERVICE}}/scenarios/{{SCENARIO_ID}}/enable",
+							"host": [
+								"{{SCENARIOS_SERVICE}}"
+							],
+							"path": [
+								"scenarios",
+								"{{SCENARIO_ID}}",
+								"enable"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "6. Отключить сценарий",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 204 - сценарий отключен', function() {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{SCENARIOS_SERVICE}}/scenarios/{{SCENARIO_ID}}/disable",
+							"host": [
+								"{{SCENARIOS_SERVICE}}"
+							],
+							"path": [
+								"scenarios",
+								"{{SCENARIO_ID}}",
+								"disable"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "7. Протестировать сценарий",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 200 - тест выполнен', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Returns test result', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('triggered');",
+									"    pm.expect(jsonData).to.have.property('actionsExecuted');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"mockData\": {\"temperature\": 26}\n}"
+						},
+						"url": {
+							"raw": "{{SCENARIOS_SERVICE}}/scenarios/{{SCENARIO_ID}}/test",
+							"host": [
+								"{{SCENARIOS_SERVICE}}"
+							],
+							"path": [
+								"scenarios",
+								"{{SCENARIO_ID}}",
+								"test"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "8. Получить выполнения",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 200', function() {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Returns executions array', function() {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"    if(jsonData.length > 0) {",
+									"        pm.expect(jsonData[0]).to.have.property('scenarioId');",
+									"        pm.expect(jsonData[0]).to.have.property('status');",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{SCENARIOS_SERVICE}}/executions?scenarioId={{SCENARIO_ID}}",
+							"host": [
+								"{{SCENARIOS_SERVICE}}"
+							],
+							"path": [
+								"executions"
+							],
+							"query": [
+								{
+									"key": "scenarioId",
+									"value": "{{SCENARIO_ID}}"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "9. Удалить сценарий",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status 204 - сценарий удален', function() {",
+									"    pm.response.to.have.status(204);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": {
+							"raw": "{{SCENARIOS_SERVICE}}/scenarios/{{SCENARIO_ID}}",
+							"host": [
+								"{{SCENARIOS_SERVICE}}"
+							],
+							"path": [
+								"scenarios",
+								"{{SCENARIO_ID}}"
+							]
+						}
+					},
+					"response": []
+				}
+			],
+			"description": "Scenarios Engine - порт 8087"
+		},
+		{
+			"name": "Получение температуры",
+			"request": {
+				"method": "GET",
+				"header": []
+			},
+			"response": []
+		}
+	],
+	"variable": [
+		{
+			"key": "USER_SERVICE",
+			"value": "http://localhost:8086",
+			"type": "string"
+		},
+		{
+			"key": "DEVICE_SERVICE",
+			"value": "http://localhost:8088",
+			"type": "string"
+		},
+		{
+			"key": "HEATING_SERVICE",
+			"value": "http://localhost:8082",
+			"type": "string"
+		},
+		{
+			"key": "LIGHTING_SERVICE",
+			"value": "http://localhost:8083",
+			"type": "string"
+		},
+		{
+			"key": "ACCESS_SERVICE",
+			"value": "http://localhost:8084",
+			"type": "string"
+		},
+		{
+			"key": "SURVEILLANCE_SERVICE",
+			"value": "http://localhost:8085",
+			"type": "string"
+		},
+		{
+			"key": "SCENARIOS_SERVICE",
+			"value": "http://localhost:8087",
+			"type": "string"
+		},
+		{
+			"key": "accessToken",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "refreshToken",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "userId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "HOME_ID",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "DEVICE_ID",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "SCHEDULE_ID",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "GROUP_ID",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "SCENE_ID",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "PERMISSION_ID",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "CODE_ID",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "TEMP_CODE",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "RECORDING_ID",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "SCENARIO_ID",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "inviteId",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "roleId",
+			"value": "",
+			"type": "string"
+		}
+	]
+}

@@ -1,0 +1,13 @@
+graph TB
+    subgraph "НОВАЯ ИНФРАСТРУКТУРА"
+        Kafka["Kafka Cluster"]
+        Gateway["API Gateway (NGINX/FastAPI)"]
+
+        subgraph "Будущие микросервисы"
+            UserFuture["User Service (soon)"]
+            DeviceFuture["Device Registry (soon)"]
+        end
+    end
+
+    Monolith["Монолит"] --> Gateway
+    Gateway --> Monolith

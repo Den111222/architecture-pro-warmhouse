@@ -1,0 +1,224 @@
+asyncapi: 2.5.0
+info:
+  title: Device Registry Events
+  version: 1.0.0
+  description: События реестра устройств
+servers:
+  production:
+    url: kafka.teplydom.ru:9092
+    protocol: kafka
+    description: Kafka cluster
+
+channels:
+  device.registered:
+    publish:
+      operationId: publishDeviceRegistered
+      message:
+        $ref: '#/components/messages/DeviceRegistered'
+    subscribe:
+      operationId: onDeviceRegistered
+      message:
+        $ref: '#/components/messages/DeviceRegistered'
+
+  device.updated:
+    publish:
+      operationId: publishDeviceUpdated
+      message:
+        $ref: '#/components/messages/DeviceUpdated'
+
+  device.deleted:
+    publish:
+      operationId: publishDeviceDeleted
+      message:
+        $ref: '#/components/messages/DeviceDeleted'
+
+  device.status.changed:
+    publish:
+      operationId: publishDeviceStatusChanged
+      message:
+        $ref: '#/components/messages/DeviceStatusChanged'
+
+  home.created:
+    publish:
+      operationId: publishHomeCreated
+      message:
+        $ref: '#/components/messages/HomeCreated'
+
+components:
+  messages:
+    DeviceRegistered:
+      name: DeviceRegistered
+      title: Устройство зарегистрировано
+      contentType: application/json
+      payload:
+        type: object
+        required:
+          - eventId
+          - eventType
+          - deviceId
+          - homeId
+          - modelId
+          - serialNumber
+          - timestamp
+        properties:
+          eventId:
+            type: string
+            format: uuid
+            description: Уникальный идентификатор события
+          eventType:
+            type: string
+            const: device.registered
+          deviceId:
+            type: string
+            format: uuid
+          homeId:
+            type: string
+            format: uuid
+          modelId:
+            type: string
+            format: uuid
+          serialNumber:
+            type: string
+          name:
+            type: string
+          timestamp:
+            type: string
+            format: date-time
+          metadata:
+            type: object
+            properties:
+              source:
+                type: string
+                enum: [user, pairing, import]
+
+    DeviceUpdated:
+      name: DeviceUpdated
+      title: Устройство обновлено
+      payload:
+        type: object
+        required:
+          - eventId
+          - eventType
+          - deviceId
+          - timestamp
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          eventType:
+            type: string
+            const: device.updated
+          deviceId:
+            type: string
+            format: uuid
+          changes:
+            type: object
+            properties:
+              name:
+                type: string
+              settings:
+                type: object
+          updatedBy:
+            type: string
+            format: uuid
+          timestamp:
+            type: string
+            format: date-time
+
+    DeviceDeleted:
+      name: DeviceDeleted
+      title: Устройство удалено
+      payload:
+        type: object
+        required:
+          - eventId
+          - eventType
+          - deviceId
+          - homeId
+          - timestamp
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          eventType:
+            type: string
+            const: device.deleted
+          deviceId:
+            type: string
+            format: uuid
+          homeId:
+            type: string
+            format: uuid
+          reason:
+            type: string
+            enum: [user_removed, factory_reset, expired]
+          deletedBy:
+            type: string
+            format: uuid
+          timestamp:
+            type: string
+            format: date-time
+
+    DeviceStatusChanged:
+      name: DeviceStatusChanged
+      title: Статус устройства изменился
+      payload:
+        type: object
+        required:
+          - eventId
+          - eventType
+          - deviceId
+          - oldStatus
+          - newStatus
+          - timestamp
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          eventType:
+            type: string
+            const: device.status.changed
+          deviceId:
+            type: string
+            format: uuid
+          oldStatus:
+            type: string
+            enum: [active, inactive, offline, firmware_update]
+          newStatus:
+            type: string
+            enum: [active, inactive, offline, firmware_update]
+          timestamp:
+            type: string
+            format: date-time
+
+    HomeCreated:
+      name: HomeCreated
+      title: Дом создан
+      payload:
+        type: object
+        required:
+          - eventId
+          - eventType
+          - homeId
+          - ownerId
+          - timestamp
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          eventType:
+            type: string
+            const: home.created
+          homeId:
+            type: string
+            format: uuid
+          ownerId:
+            type: string
+            format: uuid
+          name:
+            type: string
+          address:
+            type: string
+          timestamp:
+            type: string
+            format: date-time

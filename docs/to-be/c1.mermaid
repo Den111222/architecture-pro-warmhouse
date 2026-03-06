@@ -1,0 +1,26 @@
+graph TB
+    %% Стили
+    classDef person fill:#08427B,color:#fff
+    classDef system fill:#1168BD,color:#fff
+    classDef external fill:#6C47B0,color:#fff
+
+    user[("Пользователь")]:::person
+    support[("Команда поддержки")]:::person
+
+    system["Экосистема Умного Дома Тёплый дом"]:::system
+
+    partners["Устройства партнёров
+    MQTT/HTTP"]:::external
+
+    user -->|Управляет домом
+    мобильное/веб| system
+
+    support -->|Администрирование
+    внутренний портал| system
+
+    system <-->|Телеметрия и команды| partners
+
+    class user person
+    class support person
+    class system system
+    class partners external

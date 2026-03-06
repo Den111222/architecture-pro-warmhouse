@@ -1,0 +1,46 @@
+graph TB
+    user[("Пользователь")]
+
+    subgraph "Браузер"
+        web[Веб-приложение\nHTML/JS/CSS]
+    end
+
+    subgraph "Сервер"
+        subgraph "Монолит :8080"
+            api[HTTP API\nGorilla/mux]
+            auth[Auth Middleware\nJWT]
+            logic[Бизнес-логика\nHeating Control]
+            scheduler[Опрос датчиков\nCron job]
+            repo[Репозиторий\nGORM]
+        end
+
+        db[(PostgreSQL\nодна БД)]
+    end
+
+    subgraph "Устройства"
+        sensor1[Датчик 1\nLiving Room]
+        sensor2[Датчик 2\nBedroom]
+        sensor3[Датчик 3\nKitchen]
+    end
+
+    user -->|HTTPS| web
+    web -->|AJAX| api
+    api --> auth
+    auth --> logic
+    scheduler --> logic
+    logic --> repo
+    repo -->|SQL| db
+
+    scheduler -.->|HTTP GET| sensor1
+    scheduler -.->|HTTP GET| sensor2
+    scheduler -.->|HTTP GET| sensor3
+
+    classDef person fill:#08427B,color:#fff
+    classDef container fill:#1168BD,color:#fff
+    classDef db fill:#7F8C8D,color:#fff
+    classDef device fill:#6C47B0,color:#fff
+
+    class user person
+    class web,api,auth,logic,scheduler,repo container
+    class db db
+    class sensor1,sensor2,sensor3 device

@@ -1,0 +1,76 @@
+graph TB
+    %% Стили для подсветки проблем
+    classDef red stroke:#f00,stroke-width:3px
+    classDef blue stroke:#00f,stroke-width:1px
+
+    %% Основные стили
+    classDef person fill:#08427B,color:#fff
+    classDef container fill:#1168BD,color:#fff
+    classDef component fill:#2E86C1,color:#fff
+    classDef db fill:#7F8C8D,color:#fff
+    classDef device fill:#6C47B0,color:#fff
+
+    user[("Пользователь")]:::person
+
+    subgraph "КЛИЕНТ"
+        web["Веб-интерфейс"]:::container
+    end
+
+    subgraph "!!!МОНОЛИТ - НАРУШЕНИЕ CLEAN ARCHITECTURE!!!"
+        direction TB
+
+        subgraph "Слой 4: Фреймворки"
+            gin["Gin Framework"]:::component
+            pgx["pgx (PostgreSQL)"]:::component
+            http["HTTP Client"]:::component
+        end
+
+        subgraph "Слой 3: Интерфейсы"
+            handler["SensorHandler"]:::red
+            db["DB Repository"]:::red
+            tempService["TemperatureService"]:::red
+        end
+
+        subgraph "Слой 2: Сценарии (USE CASES)"
+            missing["!!!ПУСТО Бизнес-логика размазана
+            по контроллерам!!!"]:::red
+        end
+
+        subgraph "Слой 1: Сущности"
+            sensor["Sensor Entity"]:::component
+            tempResponse["TemperatureResponse"]:::component
+        end
+    end
+
+    subgraph "ВНЕШНИЕ"
+        postgres[(PostgreSQL)]:::db
+        tempAPI["Temperature API"]:::device
+    end
+
+    %% Связи
+    user --> web
+    web --> gin
+    gin --> handler
+
+    handler --> db
+    handler --> tempService
+    handler --> sensor
+
+    db --> pgx
+    pgx --> postgres
+    db --> sensor
+
+    tempService --> http
+    http --> tempAPI
+    tempService --> tempResponse
+
+    %% Подсветка проблемных связей
+    linkStyle 2,3,4,5,6,7 stroke:#f00,stroke-width:2px
+
+subgraph "ПРОБЛЕМЫ"
+    direction TB
+    p1["1. Handler знает про БД и API"]:::red
+    p2["2. SQL запросы в репозитории"]:::red
+    p3["3. Нет слоя use cases"]:::red
+    p4["4. Модели используются везде"]:::red
+end

@@ -1,0 +1,410 @@
+openapi: 3.0.0
+info:
+  title: Lighting Control API
+  description: Управление освещением - лампы, группы, сцены
+  version: 1.0.0
+servers:
+  - url: http://localhost:8083/api/v1
+    description: Local development
+
+tags:
+  - name: Lights
+    description: Управление лампами
+    x-layer: presenter
+  - name: Groups
+    description: Группы ламп
+    x-layer: presenter
+  - name: Scenes
+    description: Сцены освещения
+    x-layer: presenter
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Light:
+      type: object
+      description: Лампа
+      x-layer: domain
+      properties:
+        deviceId:
+          type: string
+          format: uuid
+        power:
+          type: boolean
+          example: true
+        brightness:
+          type: integer
+          minimum: 0
+          maximum: 100
+          example: 75
+        colorHex:
+          type: string
+          pattern: "^#[0-9A-Fa-f]{6}$"
+          example: "#FF5733"
+        colorTemperature:
+          type: integer
+          minimum: 2000
+          maximum: 6500
+          example: 4000
+        online:
+          type: boolean
+        lastUpdated:
+          type: string
+          format: date-time
+
+    LightGroup:
+      type: object
+      description: Группа ламп
+      x-layer: domain
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        deviceIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+        createdAt:
+          type: string
+          format: date-time
+
+    LightingScene:
+      type: object
+      description: Сцена освещения
+      x-layer: domain
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        actions:
+          type: array
+          items:
+            type: object
+            properties:
+              deviceId:
+                type: string
+                format: uuid
+              power:
+                type: boolean
+              brightness:
+                type: integer
+              colorHex:
+                type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    SetPowerRequest:
+      type: object
+      required:
+        - state
+      properties:
+        state:
+          type: string
+          enum: [on, off]
+
+    SetBrightnessRequest:
+      type: object
+      required:
+        - brightness
+      properties:
+        brightness:
+          type: integer
+          minimum: 0
+          maximum: 100
+
+    SetColorRequest:
+      type: object
+      properties:
+        hex:
+          type: string
+          pattern: "^#[0-9A-Fa-f]{6}$"
+        temperature:
+          type: integer
+          minimum: 2000
+          maximum: 6500
+
+    CreateGroupRequest:
+      type: object
+      required:
+        - name
+        - deviceIds
+      properties:
+        name:
+          type: string
+        deviceIds:
+          type: array
+          items:
+            type: string
+            format: uuid
+
+    CreateSceneRequest:
+      type: object
+      required:
+        - name
+        - actions
+      properties:
+        name:
+          type: string
+        actions:
+          type: array
+          items:
+            type: object
+            required:
+              - deviceId
+            properties:
+              deviceId:
+                type: string
+                format: uuid
+              power:
+                type: boolean
+              brightness:
+                type: integer
+              colorHex:
+                type: string
+
+paths:
+  /lights/{deviceId}:
+    get:
+      tags: [Lights]
+      summary: Получить состояние лампы
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Состояние лампы
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Light'
+
+  /lights/{deviceId}/power:
+    post:
+      tags: [Lights]
+      summary: Включить/выключить лампу
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetPowerRequest'
+      responses:
+        '202':
+          description: Команда принята
+
+  /lights/{deviceId}/brightness:
+    post:
+      tags: [Lights]
+      summary: Установить яркость
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetBrightnessRequest'
+      responses:
+        '202':
+          description: Команда принята
+
+  /lights/{deviceId}/color:
+    post:
+      tags: [Lights]
+      summary: Установить цвет
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetColorRequest'
+      responses:
+        '202':
+          description: Команда принята
+
+  /groups:
+    post:
+      tags: [Groups]
+      summary: Создать группу
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateGroupRequest'
+      responses:
+        '201':
+          description: Группа создана
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LightGroup'
+
+    get:
+      tags: [Groups]
+      summary: Получить все группы
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: homeId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Список групп
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LightGroup'
+
+  /groups/{groupId}:
+    get:
+      tags: [Groups]
+      summary: Получить информацию о группе
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Информация о группе
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LightGroup'
+
+  /groups/{groupId}/power:
+    post:
+      tags: [Groups]
+      summary: Управление группой
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: groupId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetPowerRequest'
+      responses:
+        '202':
+          description: Команда принята
+
+  /scenes:
+    post:
+      tags: [Scenes]
+      summary: Создать сцену
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSceneRequest'
+      responses:
+        '201':
+          description: Сцена создана
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LightingScene'
+
+    get:
+      tags: [Scenes]
+      summary: Получить все сцены
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: homeId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Список сцен
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LightingScene'
+
+  /scenes/{sceneId}/activate:
+    post:
+      tags: [Scenes]
+      summary: Активировать сцену
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: sceneId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '202':
+          description: Сцена активирована

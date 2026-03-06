@@ -1,0 +1,345 @@
+openapi: 3.0.0
+info:
+  title: Heating Control API
+  description: Управление отоплением - термостаты, температура, расписания
+  version: 1.0.0
+servers:
+  - url: http://localhost:8082/api/v1
+    description: Local development
+
+tags:
+  - name: Thermostats
+    description: Управление термостатами
+    x-layer: presenter
+  - name: Schedules
+    description: Расписания отопления
+    x-layer: presenter
+  - name: History
+    description: История показаний
+    x-layer: presenter
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Thermostat:
+      type: object
+      description: Термостат
+      x-layer: domain
+      properties:
+        deviceId:
+          type: string
+          format: uuid
+        currentTemp:
+          type: number
+          format: float
+          example: 22.5
+        targetTemp:
+          type: number
+          format: float
+          example: 23.0
+        mode:
+          type: string
+          enum: [heat, cool, auto, off]
+          example: "heat"
+        humidity:
+          type: integer
+          minimum: 0
+          maximum: 100
+          example: 55
+        battery:
+          type: integer
+          minimum: 0
+          maximum: 100
+          example: 98
+        lastUpdated:
+          type: string
+          format: date-time
+
+    TemperatureReading:
+      type: object
+      description: Показание температуры
+      x-layer: domain
+      properties:
+        deviceId:
+          type: string
+          format: uuid
+        temperature:
+          type: number
+          format: float
+        humidity:
+          type: integer
+        battery:
+          type: integer
+        timestamp:
+          type: string
+          format: date-time
+
+    HeatingSchedule:
+      type: object
+      description: Расписание отопления
+      x-layer: domain
+      properties:
+        id:
+          type: string
+          format: uuid
+        deviceId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        daysOfWeek:
+          type: array
+          items:
+            type: string
+            enum: [mon, tue, wed, thu, fri, sat, sun]
+        time:
+          type: string
+          pattern: "^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$"
+          example: "08:00"
+        targetTemp:
+          type: number
+          format: float
+        enabled:
+          type: boolean
+          default: true
+
+    SetTargetRequest:
+      type: object
+      required:
+        - targetTemp
+      properties:
+        targetTemp:
+          type: number
+          format: float
+          minimum: 5
+          maximum: 35
+          example: 22.5
+
+    SetModeRequest:
+      type: object
+      required:
+        - mode
+      properties:
+        mode:
+          type: string
+          enum: [heat, cool, auto, off]
+
+    CreateScheduleRequest:
+      type: object
+      required:
+        - deviceId
+        - daysOfWeek
+        - time
+        - targetTemp
+      properties:
+        deviceId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        daysOfWeek:
+          type: array
+          items:
+            type: string
+            enum: [mon, tue, wed, thu, fri, sat, sun]
+        time:
+          type: string
+          pattern: "^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$"
+        targetTemp:
+          type: number
+          format: float
+
+paths:
+  /thermostats/{deviceId}:
+    get:
+      tags: [Thermostats]
+      summary: Получить состояние термостата
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Текущее состояние
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Thermostat'
+        '404':
+          description: Устройство не найдено
+
+  /thermostats/{deviceId}/target:
+    post:
+      tags: [Thermostats]
+      summary: Установить целевую температуру
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetTargetRequest'
+      responses:
+        '202':
+          description: Команда принята
+        '400':
+          description: Некорректная температура
+
+  /thermostats/{deviceId}/mode:
+    put:
+      tags: [Thermostats]
+      summary: Изменить режим работы
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetModeRequest'
+      responses:
+        '202':
+          description: Команда принята
+
+  /thermostats/{deviceId}/history:
+    get:
+      tags: [History]
+      summary: Получить историю показаний
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+      responses:
+        '200':
+          description: История показаний
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TemperatureReading'
+
+  /schedules:
+    post:
+      tags: [Schedules]
+      summary: Создать расписание
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateScheduleRequest'
+      responses:
+        '201':
+          description: Расписание создано
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HeatingSchedule'
+
+  /schedules/{scheduleId}:
+    get:
+      tags: [Schedules]
+      summary: Получить расписание
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: scheduleId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Информация о расписании
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HeatingSchedule'
+
+    delete:
+      tags: [Schedules]
+      summary: Удалить расписание
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: scheduleId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Расписание удалено
+
+  /thermostats/{deviceId}/schedules:
+    get:
+      tags: [Schedules]
+      summary: Получить расписания устройства
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Список расписаний
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/HeatingSchedule'

@@ -1,0 +1,445 @@
+classDiagram
+    %% ========== EXTERNAL (Слой 0) ==========
+    class PostgreSQL {
+        <<infra/connections/asyncpg>>
+        +database
+        +tables
+    }
+    style PostgreSQL fill:#6C47B0,color:#fff,stroke:#333
+
+    class Kafka {
+        <<infra/connections/aiokafka>>
+        +broker
+        +topics
+    }
+    style Kafka fill:#6C47B0,color:#fff,stroke:#333
+
+    class MQTTBroker {
+        <<infra/connections/mqtt>>
+        +broker
+        +topics
+    }
+    style MQTTBroker fill:#6C47B0,color:#fff,stroke:#333
+
+    %% ========== FRAMEWORKS (Слой 4) ==========
+    class FastAPI {
+        <<infra/framework/fastapi>>
+        +app
+        +routes
+    }
+    style FastAPI fill:#E67E22,color:#fff,stroke:#333
+
+    class AsyncPG {
+        <<infra/connections/asyncpg>>
+        +pool
+        +fetch()
+    }
+    style AsyncPG fill:#E67E22,color:#fff,stroke:#333
+
+    class Aiokafka {
+        <<infra/connections/aiokafka>>
+        +producer
+        +consumer
+    }
+    style Aiokafka fill:#E67E22,color:#fff,stroke:#333
+
+    class AioMQTT {
+        <<infra/connections/mqtt>>
+        +client
+        +publish()
+    }
+    style AioMQTT fill:#E67E22,color:#fff,stroke:#333
+
+    %% ========== REPOSITORY IMPLEMENTATIONS (Слой 4) ==========
+    class PostgresStateRepository {
+        <<infra/repositories/postgres_state>>
+        -pool: AsyncPG
+        +get_current()
+        +save_reading()
+        +get_history()
+    }
+    style PostgresStateRepository fill:#E67E22,color:#fff,stroke:#333
+
+    class PostgresScheduleRepository {
+        <<infra/repositories/postgres_schedule>>
+        -pool: AsyncPG
+        +save()
+        +find_by_id()
+        +find_by_device()
+    }
+    style PostgresScheduleRepository fill:#E67E22,color:#fff,stroke:#333
+
+    class MQTTDeviceGateway {
+        <<infra/gateways/mqtt_device>>
+        -client: AioMQTT
+        +send_command()
+        +get_status()
+    }
+    style MQTTDeviceGateway fill:#E67E22,color:#fff,stroke:#333
+
+    class KafkaEventPublisher {
+        <<infra/gateways/kafka_publisher>>
+        -producer: Aiokafka
+        +publish()
+    }
+    style KafkaEventPublisher fill:#E67E22,color:#fff,stroke:#333
+
+    class KafkaEventSubscriber {
+        <<infra/gateways/kafka_subscriber>>
+        -consumer: Aiokafka
+        +subscribe()
+    }
+    style KafkaEventSubscriber fill:#E67E22,color:#fff,stroke:#333
+
+    %% ========== REPOSITORY INTERFACES (Слой 3) ==========
+    class StateRepository {
+        <<domain/repositories/state_repository>>
+        +get_current()
+        +save_reading()
+        +get_history()
+    }
+    style StateRepository fill:#28B463,color:#fff,stroke:#333
+
+    class ScheduleRepository {
+        <<domain/repositories/schedule_repository>>
+        +save()
+        +find_by_id()
+        +find_by_device()
+    }
+    style ScheduleRepository fill:#28B463,color:#fff,stroke:#333
+
+    class DeviceGateway {
+        <<domain/gateways/device_gateway>>
+        +send_command()
+        +get_status()
+    }
+    style DeviceGateway fill:#28B463,color:#fff,stroke:#333
+
+    class EventPublisher {
+        <<domain/gateways/event_publisher>>
+        +publish()
+    }
+    style EventPublisher fill:#28B463,color:#fff,stroke:#333
+
+    class EventSubscriber {
+        <<domain/gateways/event_subscriber>>
+        +subscribe()
+    }
+    style EventSubscriber fill:#28B463,color:#fff,stroke:#333
+
+    %% ========== PRESENTATION (Слой 3B) ==========
+    class GetCurrentUserDep {
+        <<api/dependencies/auth>>
+        +__call__() User
+    }
+    style GetCurrentUserDep fill:#9B59B6,color:#fff,stroke:#333
+
+    class CheckDeviceAccessDep {
+        <<api/dependencies/access>>
+        -access_svc: AccessService
+        +__call__() bool
+    }
+    style CheckDeviceAccessDep fill:#9B59B6,color:#fff,stroke:#333
+
+    class ThermostatController {
+        <<api/controllers/thermostat>>
+        -get_state_uc: GetStateUseCase
+        -set_temp_uc: SetTargetTemperatureUseCase
+        -set_mode_uc: SetModeUseCase
+        +get_device()
+        +post_target()
+        +put_mode()
+    }
+    style ThermostatController fill:#9B59B6,color:#fff,stroke:#333
+
+    class ScheduleController {
+        <<api/controllers/schedule>>
+        -create_uc: CreateScheduleUseCase
+        -schedule_repo: ScheduleRepository
+        +post_schedule()
+        +get_schedule()
+        +delete_schedule()
+    }
+    style ScheduleController fill:#9B59B6,color:#fff,stroke:#333
+
+    class HistoryController {
+        <<api/controllers/history>>
+        -get_history_uc: GetHistoryUseCase
+        +get_history()
+    }
+    style HistoryController fill:#9B59B6,color:#fff,stroke:#333
+
+    class ThermostatRouter {
+        <<api/routers/thermostat>>
+        +routes
+    }
+    style ThermostatRouter fill:#9B59B6,color:#fff,stroke:#333
+
+    class ScheduleRouter {
+        <<api/routers/schedule>>
+        +routes
+    }
+    style ScheduleRouter fill:#9B59B6,color:#fff,stroke:#333
+
+    class HistoryRouter {
+        <<api/routers/history>>
+        +routes
+    }
+    style HistoryRouter fill:#9B59B6,color:#fff,stroke:#333
+
+    class JSONPresenter {
+        <<api/presenters/json>>
+        +present()
+    }
+    style JSONPresenter fill:#9B59B6,color:#fff,stroke:#333
+
+    class TemperatureDTO {
+        <<api/dtos/temperature>>
+        +device_id: UUID
+        +temperature: float
+    }
+    style TemperatureDTO fill:#9B59B6,color:#fff,stroke:#333
+
+    class ScheduleDTO {
+        <<api/dtos/schedule>>
+        +id: UUID
+        +time: str
+    }
+    style ScheduleDTO fill:#9B59B6,color:#fff,stroke:#333
+
+    %% ========== USE CASES (Слой 2) ==========
+    class GetStateUseCase {
+        <<application/use_cases/get_state>>
+        -state_repo: StateRepository
+        +execute() Thermostat
+    }
+    style GetStateUseCase fill:#F39C12,color:#fff,stroke:#333
+
+    class SetTargetTemperatureUseCase {
+        <<application/use_cases/set_temperature>>
+        -state_repo: StateRepository
+        -device_gateway: DeviceGateway
+        -event_publisher: EventPublisher
+        +execute()
+    }
+    style SetTargetTemperatureUseCase fill:#F39C12,color:#fff,stroke:#333
+
+    class SetModeUseCase {
+        <<application/use_cases/set_mode>>
+        -state_repo: StateRepository
+        -device_gateway: DeviceGateway
+        -event_publisher: EventPublisher
+        +execute()
+    }
+    style SetModeUseCase fill:#F39C12,color:#fff,stroke:#333
+
+    class CreateScheduleUseCase {
+        <<application/use_cases/create_schedule>>
+        -schedule_repo: ScheduleRepository
+        -event_publisher: EventPublisher
+        +execute() Schedule
+    }
+    style CreateScheduleUseCase fill:#F39C12,color:#fff,stroke:#333
+
+    class GetHistoryUseCase {
+        <<application/use_cases/get_history>>
+        -state_repo: StateRepository
+        +execute() List~TemperatureReading~
+    }
+    style GetHistoryUseCase fill:#F39C12,color:#fff,stroke:#333
+
+    class ProcessTelemetryUseCase {
+        <<application/use_cases/process_telemetry>>
+        -state_repo: StateRepository
+        -event_publisher: EventPublisher
+        +execute()
+    }
+    style ProcessTelemetryUseCase fill:#F39C12,color:#fff,stroke:#333
+
+    class HandleScheduleTriggerUseCase {
+        <<application/use_cases/handle_schedule>>
+        -schedule_repo: ScheduleRepository
+        -device_gateway: DeviceGateway
+        +execute()
+    }
+    style HandleScheduleTriggerUseCase fill:#F39C12,color:#fff,stroke:#333
+
+    %% ========== DOMAIN SERVICES (Слой 1) ==========
+    class AccessService {
+        <<domain/services/access>>
+        -device_repo: DeviceRepository
+        -permission_repo: PermissionRepository
+        +can_access(user_id, device_id) bool
+    }
+    style AccessService fill:#F39C12,color:#fff,stroke:#333
+
+    %% ========== DOMAIN ENTITIES (Слой 1) ==========
+    class Thermostat {
+        <<domain/entities/thermostat>>
+        -id: UUID
+        -current_temp: float
+        -target_temp: float
+        -mode: str
+        +update_temperature()
+        +change_mode()
+        +is_heating()
+    }
+    style Thermostat fill:#7F8C8D,color:#fff,stroke:#333
+
+    class Schedule {
+        <<domain/entities/schedule>>
+        -id: UUID
+        -device_id: UUID
+        -days_of_week: list
+        -time: time
+        -target_temp: float
+        -enabled: bool
+        +is_active()
+        +enable()
+        +disable()
+    }
+    style Schedule fill:#7F8C8D,color:#fff,stroke:#333
+
+    class TemperatureReading {
+        <<domain/value_objects/temperature>>
+        -device_id: UUID
+        -value: float
+        -unit: str
+        -timestamp: datetime
+        -humidity: int
+    }
+    style TemperatureReading fill:#7F8C8D,color:#fff,stroke:#333
+
+    %% ========== DOMAIN EVENTS (Слой 1) ==========
+    class TemperatureChanged {
+        <<domain/events/temperature_changed>>
+        -device_id: UUID
+        -old_temp: float
+        -new_temp: float
+        -timestamp: datetime
+    }
+    style TemperatureChanged fill:#7F8C8D,color:#fff,stroke:#333
+
+    class ModeChanged {
+        <<domain/events/mode_changed>>
+        -device_id: UUID
+        -old_mode: str
+        -new_mode: str
+        -timestamp: datetime
+    }
+    style ModeChanged fill:#7F8C8D,color:#fff,stroke:#333
+
+    class ScheduleTriggered {
+        <<domain/events/schedule_triggered>>
+        -schedule_id: UUID
+        -device_id: UUID
+        -target_temp: float
+        -timestamp: datetime
+    }
+    style ScheduleTriggered fill:#7F8C8D,color:#fff,stroke:#333
+
+    %% ========== ДИ КОНТЕЙНЕР (невидимый, но важный) ==========
+    class DIContainer {
+        <<infra/di/container>>
+        +get_state_repo() StateRepository
+        +get_schedule_repo() ScheduleRepository
+        +get_device_gateway() DeviceGateway
+        +get_event_publisher() EventPublisher
+        +get_state_uc() GetStateUseCase
+    }
+    style DIContainer fill:#E67E22,color:#fff,stroke:#333,stroke-dasharray: 5 5
+
+    %% ========== СВЯЗИ ==========
+
+    %% Роутеры → Контроллеры
+    FastAPI --> ThermostatRouter
+    FastAPI --> ScheduleRouter
+    FastAPI --> HistoryRouter
+
+    ThermostatRouter --> ThermostatController
+    ScheduleRouter --> ScheduleController
+    HistoryRouter --> HistoryController
+
+    %% Контроллеры → Зависимости
+    ThermostatController --> CheckDeviceAccessDep
+    ScheduleController --> CheckDeviceAccessDep
+    HistoryController --> CheckDeviceAccessDep
+
+    CheckDeviceAccessDep --> GetCurrentUserDep
+    CheckDeviceAccessDep --> AccessService
+
+    %% Контроллеры → Use Cases
+    ThermostatController --> GetStateUseCase
+    ThermostatController --> SetTargetTemperatureUseCase
+    ThermostatController --> SetModeUseCase
+    ScheduleController --> CreateScheduleUseCase
+    HistoryController --> GetHistoryUseCase
+
+    %% Контроллеры → Presenters/DTOs
+    ThermostatController --> JSONPresenter
+    ThermostatController --> TemperatureDTO
+    ScheduleController --> ScheduleDTO
+
+    %% Use Cases → Repository Interfaces
+    GetStateUseCase --> StateRepository
+    SetTargetTemperatureUseCase --> StateRepository
+    SetTargetTemperatureUseCase --> DeviceGateway
+    SetTargetTemperatureUseCase --> EventPublisher
+    SetModeUseCase --> StateRepository
+    SetModeUseCase --> DeviceGateway
+    SetModeUseCase --> EventPublisher
+    CreateScheduleUseCase --> ScheduleRepository
+    CreateScheduleUseCase --> EventPublisher
+    GetHistoryUseCase --> StateRepository
+    ProcessTelemetryUseCase --> StateRepository
+    ProcessTelemetryUseCase --> EventPublisher
+    HandleScheduleTriggerUseCase --> ScheduleRepository
+    HandleScheduleTriggerUseCase --> DeviceGateway
+
+    %% Use Cases → Domain Entities/Events
+    GetStateUseCase --> Thermostat
+    SetTargetTemperatureUseCase --> Thermostat
+    SetTargetTemperatureUseCase --> TemperatureChanged
+    SetModeUseCase --> Thermostat
+    SetModeUseCase --> ModeChanged
+    CreateScheduleUseCase --> Schedule
+    CreateScheduleUseCase --> ScheduleTriggered
+    GetHistoryUseCase --> TemperatureReading
+    ProcessTelemetryUseCase --> TemperatureReading
+    ProcessTelemetryUseCase --> Thermostat
+    ProcessTelemetryUseCase --> TemperatureChanged
+    HandleScheduleTriggerUseCase --> Schedule
+
+    %% Repository Interfaces → Implementations (через DI)
+    StateRepository <|.. PostgresStateRepository : implements
+    ScheduleRepository <|.. PostgresScheduleRepository : implements
+    DeviceGateway <|.. MQTTDeviceGateway : implements
+    EventPublisher <|.. KafkaEventPublisher : implements
+    EventSubscriber <|.. KafkaEventSubscriber : implements
+
+    %% DI Container создает все
+    DIContainer --> PostgresStateRepository
+    DIContainer --> PostgresScheduleRepository
+    DIContainer --> MQTTDeviceGateway
+    DIContainer --> KafkaEventPublisher
+    DIContainer --> KafkaEventSubscriber
+    DIContainer --> GetStateUseCase
+    DIContainer --> SetTargetTemperatureUseCase
+    DIContainer --> CreateScheduleUseCase
+    DIContainer --> AccessService
+
+    %% Implementations → Frameworks
+    PostgresStateRepository --> AsyncPG
+    PostgresScheduleRepository --> AsyncPG
+    MQTTDeviceGateway --> AioMQTT
+    KafkaEventPublisher --> Aiokafka
+    KafkaEventSubscriber --> Aiokafka
+
+    %% Frameworks → External
+    AsyncPG --> PostgreSQL
+    AioMQTT --> MQTTBroker
+    Aiokafka --> Kafka
+
+    %% Event Subscriber → Use Cases
+    KafkaEventSubscriber --> ProcessTelemetryUseCase
+    KafkaEventSubscriber --> HandleScheduleTriggerUseCase

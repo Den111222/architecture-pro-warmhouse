@@ -1,0 +1,365 @@
+openapi: 3.0.0
+info:
+  title: Device Registry API
+  description: Реестр устройств - управление домами, устройствами, моделями
+  version: 1.0.0
+servers:
+  - url: http://localhost:8081/api/v1
+    description: Local development
+
+tags:
+  - name: Homes
+    description: Управление домами
+    x-layer: presenter
+  - name: Devices
+    description: Управление устройствами
+    x-layer: presenter
+  - name: Models
+    description: Справочник моделей
+    x-layer: presenter
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Home:
+      type: object
+      description: Дом пользователя
+      x-layer: domain
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: "Мой дом"
+        address:
+          type: string
+          example: "ул. Ленина, д. 1"
+        timezone:
+          type: string
+          example: "Europe/Moscow"
+        ownerId:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+
+    Device:
+      type: object
+      description: Устройство
+      x-layer: domain
+      properties:
+        id:
+          type: string
+          format: uuid
+        homeId:
+          type: string
+          format: uuid
+        modelId:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: "Термостат в спальне"
+        serialNumber:
+          type: string
+          example: "SN12345678"
+        status:
+          type: string
+          enum: [active, inactive, firmware_update, offline]
+        firmwareVersion:
+          type: string
+          example: "2.1.0"
+        lastSeenAt:
+          type: string
+          format: date-time
+        settings:
+          type: object
+          example: {"brightness": 70, "threshold": 22.5}
+        createdAt:
+          type: string
+          format: date-time
+
+    DeviceModel:
+      type: object
+      description: Модель устройства
+      x-layer: domain
+      properties:
+        id:
+          type: string
+          format: uuid
+        vendor:
+          type: string
+          example: "Xiaomi"
+        model:
+          type: string
+          example: "Mi Temperature Sensor 2"
+        type:
+          type: string
+          enum: [thermostat, light, lock, gate, camera, sensor]
+        protocol:
+          type: string
+          enum: [mqtt, zigbee, wifi, ble, rtsp]
+        capabilities:
+          type: array
+          items:
+            type: string
+            enum: [temperature, humidity, motion, battery, color]
+        supportedCommands:
+          type: array
+          items:
+            type: string
+            enum: [on, off, set_temp, lock, unlock, open, close]
+
+    CreateHomeRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+        address:
+          type: string
+        timezone:
+          type: string
+          default: "Europe/Moscow"
+
+    RegisterDeviceRequest:
+      type: object
+      required:
+        - serialNumber
+        - modelId
+        - homeId
+      properties:
+        serialNumber:
+          type: string
+        modelId:
+          type: string
+          format: uuid
+        homeId:
+          type: string
+          format: uuid
+        name:
+          type: string
+
+paths:
+  /homes:
+    post:
+      tags: [Homes]
+      summary: Создать дом
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateHomeRequest'
+      responses:
+        '201':
+          description: Дом создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Home'
+
+  /homes/{homeId}:
+    get:
+      tags: [Homes]
+      summary: Получить информацию о доме
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: homeId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Информация о доме
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Home'
+
+  /homes/{homeId}/devices:
+    get:
+      tags: [Devices]
+      summary: Получить устройства в доме
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: homeId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [thermostat, light, lock, gate, camera, sensor]
+      responses:
+        '200':
+          description: Список устройств
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Device'
+
+  /homes/{homeId}/users:
+    get:
+      tags: [Homes]
+      summary: Получить пользователей дома
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: homeId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Список пользователей
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    userId:
+                      type: string
+                      format: uuid
+                    email:
+                      type: string
+                    fullName:
+                      type: string
+                    role:
+                      type: string
+                    joinedAt:
+                      type: string
+                      format: date-time
+
+  /devices:
+    post:
+      tags: [Devices]
+      summary: Зарегистрировать устройство
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterDeviceRequest'
+      responses:
+        '201':
+          description: Устройство зарегистрировано
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Device'
+        '400':
+          description: Неверный серийный номер или модель
+
+  /devices/{deviceId}:
+    get:
+      tags: [Devices]
+      summary: Получить информацию об устройстве
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Информация об устройстве
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Device'
+
+    patch:
+      tags: [Devices]
+      summary: Обновить настройки устройства
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                settings:
+                  type: object
+      responses:
+        '200':
+          description: Настройки обновлены
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Device'
+
+    delete:
+      tags: [Devices]
+      summary: Удалить устройство
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Устройство удалено
+
+  /models:
+    get:
+      tags: [Models]
+      summary: Получить список моделей
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [thermostat, light, lock, gate, camera, sensor]
+      responses:
+        '200':
+          description: Список моделей
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DeviceModel'

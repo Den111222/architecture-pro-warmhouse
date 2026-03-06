@@ -1,0 +1,183 @@
+graph TB
+    %% Стили
+    classDef external fill:#6C47B0,color:#fff,stroke:#333
+    classDef framework fill:#E67E22,color:#fff,stroke:#333
+    classDef repo fill:#28B463,color:#fff,stroke:#333
+    classDef presenter fill:#9B59B6,color:#fff,stroke:#333
+    classDef service fill:#F39C12,color:#fff,stroke:#333
+    classDef domain fill:#7F8C8D,color:#fff,stroke:#333
+
+    subgraph "Слой 0: Внешние системы"
+        PG[(PostgreSQL)]:::external
+        Kafka[(Kafka)]:::external
+    end
+
+    subgraph "Слой 4: Фреймворки и реализации"
+        FastAPI["FastAPI Framework"]:::framework
+        AsyncPG["asyncpg"]:::framework
+        Aiokafka["aiokafka"]:::framework
+
+        PostgresHomeRepo["PostgresHomeRepository
+        (реализация HomeRepository)"]:::framework
+        PostgresDeviceRepo["PostgresDeviceRepository
+        (реализация DeviceRepository)"]:::framework
+        PostgresModelRepo["PostgresModelRepository
+        (реализация ModelRepository)"]:::framework
+
+        KafkaPublisherImpl["KafkaEventPublisher
+        (реализация EventPublisher)"]:::framework
+        KafkaSubscriberImpl["KafkaEventSubscriber
+        (реализация EventSubscriber)"]:::framework
+
+        DIContainer["DI Container"]:::framework
+    end
+
+    subgraph "Слой 3A: Интерфейсы"
+        IHomeRepo["<<interface>>
+        HomeRepository"]:::repo
+
+        IDeviceRepo["<<interface>>
+        DeviceRepository"]:::repo
+
+        IModelRepo["<<interface>>
+        ModelRepository"]:::repo
+
+        IEventPublisher["<<interface>>
+        EventPublisher"]:::repo
+
+        IEventSubscriber["<<interface>>
+        EventSubscriber"]:::repo
+    end
+
+    subgraph "Слой 3B: Representation"
+        direction TB
+
+        HomeRouter["HomeRouter
+        (/homes/*)"]:::presenter
+        DeviceRouter["DeviceRouter
+        (/devices/*)"]:::presenter
+        ModelRouter["ModelRouter
+        (/models/*)"]:::presenter
+
+        HomeController["HomeController"]:::presenter
+        DeviceController["DeviceController"]:::presenter
+        ModelController["ModelController"]:::presenter
+
+        GetCurrentUserDep["get_current_user()"]:::presenter
+        CheckHomeAccessDep["check_home_access()"]:::presenter
+
+        JSONPresenter["JSONPresenter"]:::presenter
+        HomeDTO["HomeDTO"]:::presenter
+        DeviceDTO["DeviceDTO"]:::presenter
+        ModelDTO["ModelDTO"]:::presenter
+    end
+
+    subgraph "Слой 2: Use Cases"
+        CreateHomeUC["CreateHomeUseCase"]:::service
+        GetHomeUC["GetHomeUseCase"]:::service
+        RegisterDeviceUC["RegisterDeviceUseCase"]:::service
+        GetDevicesUC["GetDevicesUseCase"]:::service
+        UpdateDeviceUC["UpdateDeviceUseCase"]:::service
+        DeleteDeviceUC["DeleteDeviceUseCase"]:::service
+        AddUserToHomeUC["AddUserToHomeUseCase"]:::service
+        RemoveUserFromHomeUC["RemoveUserFromHomeUseCase"]:::service
+    end
+
+    subgraph "Слой 1: Domain"
+        HomeEntity["Home Entity"]:::domain
+        DeviceEntity["Device Entity"]:::domain
+        ModelEntity["DeviceModel Entity"]:::domain
+
+        SerialNumberVO["SerialNumber VO"]:::domain
+        AuthTokenVO["AuthToken VO"]:::domain
+
+        HomeCreated["HomeCreated Event"]:::domain
+        DeviceRegistered["DeviceRegistered Event"]:::domain
+        DeviceUpdated["DeviceUpdated Event"]:::domain
+        DeviceDeleted["DeviceDeleted Event"]:::domain
+        UserAddedToHome["UserAddedToHome Event"]:::domain
+    end
+
+    %% Связи
+    DIContainer --> PostgresHomeRepo
+    DIContainer --> PostgresDeviceRepo
+    DIContainer --> PostgresModelRepo
+    DIContainer --> KafkaPublisherImpl
+    DIContainer --> KafkaSubscriberImpl
+    DIContainer --> CreateHomeUC
+    DIContainer --> RegisterDeviceUC
+    DIContainer --> GetDevicesUC
+
+    FastAPI --> HomeRouter
+    FastAPI --> DeviceRouter
+    FastAPI --> ModelRouter
+
+    HomeRouter --> HomeController
+    DeviceRouter --> DeviceController
+    ModelRouter --> ModelController
+
+    HomeController --> GetCurrentUserDep
+    HomeController --> CheckHomeAccessDep
+    DeviceController --> GetCurrentUserDep
+    DeviceController --> CheckHomeAccessDep
+
+    HomeController --> CreateHomeUC
+    HomeController --> GetHomeUC
+    HomeController --> AddUserToHomeUC
+    HomeController --> RemoveUserFromHomeUC
+    DeviceController --> RegisterDeviceUC
+    DeviceController --> GetDevicesUC
+    DeviceController --> UpdateDeviceUC
+    DeviceController --> DeleteDeviceUC
+    ModelController --> GetDevicesUC
+
+    HomeController --> JSONPresenter
+    HomeController --> HomeDTO
+    DeviceController --> DeviceDTO
+    ModelController --> ModelDTO
+
+    CreateHomeUC --> IHomeRepo
+    CreateHomeUC --> IEventPublisher
+    CreateHomeUC --> HomeEntity
+    CreateHomeUC --> HomeCreated
+
+    RegisterDeviceUC --> IDeviceRepo
+    RegisterDeviceUC --> IModelRepo
+    RegisterDeviceUC --> IEventPublisher
+    RegisterDeviceUC --> DeviceEntity
+    RegisterDeviceUC --> ModelEntity
+    RegisterDeviceUC --> SerialNumberVO
+    RegisterDeviceUC --> AuthTokenVO
+    RegisterDeviceUC --> DeviceRegistered
+
+    GetDevicesUC --> IDeviceRepo
+    GetDevicesUC --> DeviceEntity
+
+    UpdateDeviceUC --> IDeviceRepo
+    UpdateDeviceUC --> IEventPublisher
+    UpdateDeviceUC --> DeviceEntity
+    UpdateDeviceUC --> DeviceUpdated
+
+    DeleteDeviceUC --> IDeviceRepo
+    DeleteDeviceUC --> IEventPublisher
+    DeleteDeviceUC --> DeviceDeleted
+
+    AddUserToHomeUC --> IHomeRepo
+    AddUserToHomeUC --> IEventPublisher
+    AddUserToHomeUC --> HomeEntity
+    AddUserToHomeUC --> UserAddedToHome
+
+    IHomeRepo -.-> PostgresHomeRepo
+    IDeviceRepo -.-> PostgresDeviceRepo
+    IModelRepo -.-> PostgresModelRepo
+    IEventPublisher -.-> KafkaPublisherImpl
+    IEventSubscriber -.-> KafkaSubscriberImpl
+
+    PostgresHomeRepo --> AsyncPG
+    PostgresDeviceRepo --> AsyncPG
+    PostgresModelRepo --> AsyncPG
+    AsyncPG --> PG
+
+    KafkaPublisherImpl --> Aiokafka
+    KafkaSubscriberImpl --> Aiokafka
+    Aiokafka --> Kafka

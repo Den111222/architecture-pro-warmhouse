@@ -1,0 +1,395 @@
+openapi: 3.0.0
+info:
+  title: Surveillance API
+  description: Видеонаблюдение - камеры, запись, события
+  version: 1.0.0
+servers:
+  - url: http://localhost:8085/api/v1
+    description: Local development
+
+tags:
+  - name: Cameras
+    description: Управление камерами
+    x-layer: presenter
+  - name: Streams
+    description: Видеопотоки
+    x-layer: presenter
+  - name: Recordings
+    description: Записи с камер
+    x-layer: presenter
+  - name: Events
+    description: События и детекция
+    x-layer: presenter
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Camera:
+      type: object
+      description: Камера
+      x-layer: domain
+      properties:
+        deviceId:
+          type: string
+          format: uuid
+        name:
+          type: string
+        model:
+          type: string
+        status:
+          type: string
+          enum: [online, offline, recording]
+        capabilities:
+          type: array
+          items:
+            type: string
+            enum: [ptz, night_vision, two_way_audio, motion_detection]
+        settings:
+          type: object
+          properties:
+            resolution:
+              type: string
+              enum: [480p, 720p, 1080p, 4K]
+            fps:
+              type: integer
+        lastSeen:
+          type: string
+          format: date-time
+
+    Recording:
+      type: object
+      description: Запись видео
+      x-layer: domain
+      properties:
+        id:
+          type: string
+          format: uuid
+        cameraId:
+          type: string
+          format: uuid
+        startedAt:
+          type: string
+          format: date-time
+        endedAt:
+          type: string
+          format: date-time
+        duration:
+          type: integer
+          description: Длительность в секундах
+        size:
+          type: integer
+          description: Размер в байтах
+        thumbnail:
+          type: string
+          format: uri
+        hasMotion:
+          type: boolean
+        url:
+          type: string
+          format: uri
+          description: Ссылка на скачивание
+
+    SurveillanceEvent:
+      type: object
+      description: Событие с камеры
+      x-layer: domain
+      properties:
+        id:
+          type: string
+          format: uuid
+        cameraId:
+          type: string
+          format: uuid
+        timestamp:
+          type: string
+          format: date-time
+        type:
+          type: string
+          enum: [motion, person, vehicle, animal, sound]
+        confidence:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+        snapshot:
+          type: string
+          format: uri
+        recordingId:
+          type: string
+          format: uuid
+
+    StreamResponse:
+      type: object
+      description: URL видеопотока
+      x-layer: presenter
+      properties:
+        url:
+          type: string
+          format: uri
+          example: "https://stream.teplydom.ru/cameras/123/stream.m3u8?token=xxx"
+        expiresAt:
+          type: string
+          format: date-time
+
+paths:
+  /cameras:
+    get:
+      tags: [Cameras]
+      summary: Получить список камер
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: homeId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Список камер
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Camera'
+
+  /cameras/{cameraId}:
+    get:
+      tags: [Cameras]
+      summary: Получить информацию о камере
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: cameraId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Информация о камере
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Camera'
+
+  /cameras/{cameraId}/stream:
+    get:
+      tags: [Streams]
+      summary: Получить URL видеопотока
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: cameraId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: protocol
+          in: query
+          schema:
+            type: string
+            enum: [hls, rtsp, webrtc]
+            default: hls
+      responses:
+        '200':
+          description: URL потока
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StreamResponse'
+
+  /cameras/{cameraId}/snapshot:
+    get:
+      tags: [Streams]
+      summary: Получить текущий кадр
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: cameraId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Изображение
+          content:
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+
+  /cameras/{cameraId}/record:
+    post:
+      tags: [Recordings]
+      summary: Начать запись
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: cameraId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                duration:
+                  type: integer
+                  description: Длительность в секундах (0 = бесконечно)
+      responses:
+        '202':
+          description: Запись начата
+
+  /cameras/{cameraId}/stop:
+    post:
+      tags: [Recordings]
+      summary: Остановить запись
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: cameraId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '202':
+          description: Запись остановлена
+
+  /recordings:
+    get:
+      tags: [Recordings]
+      summary: Получить список записей
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: cameraId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: hasEvents
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Список записей
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Recording'
+
+  /recordings/{recordingId}:
+    get:
+      tags: [Recordings]
+      summary: Получить информацию о записи
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: recordingId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Информация о записи
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Recording'
+
+  /recordings/{recordingId}/download:
+    get:
+      tags: [Recordings]
+      summary: Скачать запись
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: recordingId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Видеофайл
+          content:
+            video/mp4:
+              schema:
+                type: string
+                format: binary
+
+  /events:
+    get:
+      tags: [Events]
+      summary: Получить события
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: cameraId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [motion, person, vehicle, animal, sound]
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 100
+      responses:
+        '200':
+          description: События
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SurveillanceEvent'

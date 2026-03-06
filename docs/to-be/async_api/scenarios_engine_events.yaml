@@ -1,0 +1,268 @@
+asyncapi: 2.5.0
+info:
+  title: Scenarios Engine Events
+  version: 1.0.0
+  description: События движка сценариев
+servers:
+  production:
+    url: kafka.teplydom.ru:9092
+    protocol: kafka
+    description: Kafka cluster
+
+channels:
+  scenario.created:
+    publish:
+      operationId: publishScenarioCreated
+      message:
+        $ref: '#/components/messages/ScenarioCreated'
+    subscribe:
+      operationId: onScenarioCreated
+      message:
+        $ref: '#/components/messages/ScenarioCreated'
+
+  scenario.updated:
+    publish:
+      operationId: publishScenarioUpdated
+      message:
+        $ref: '#/components/messages/ScenarioUpdated'
+
+  scenario.deleted:
+    publish:
+      operationId: publishScenarioDeleted
+      message:
+        $ref: '#/components/messages/ScenarioDeleted'
+
+  scenario.triggered:
+    publish:
+      operationId: publishScenarioTriggered
+      message:
+        $ref: '#/components/messages/ScenarioTriggered'
+
+  scenario.executed:
+    publish:
+      operationId: publishScenarioExecuted
+      message:
+        $ref: '#/components/messages/ScenarioExecuted'
+
+  command.sent:
+    publish:
+      operationId: publishCommandSent
+      message:
+        $ref: '#/components/messages/CommandSent'
+
+components:
+  messages:
+    ScenarioCreated:
+      name: ScenarioCreated
+      title: Сценарий создан
+      contentType: application/json
+      payload:
+        type: object
+        required:
+          - eventId
+          - eventType
+          - scenarioId
+          - homeId
+          - name
+          - createdBy
+          - timestamp
+        properties:
+          eventId:
+            type: string
+            format: uuid
+            description: Уникальный идентификатор события
+          eventType:
+            type: string
+            const: scenario.created
+          scenarioId:
+            type: string
+            format: uuid
+          homeId:
+            type: string
+            format: uuid
+          name:
+            type: string
+          trigger:
+            type: object
+          createdBy:
+            type: string
+            format: uuid
+          timestamp:
+            type: string
+            format: date-time
+          metadata:
+            type: object
+            properties:
+              source:
+                type: string
+                enum: [web, mobile, api]
+
+    ScenarioUpdated:
+      name: ScenarioUpdated
+      title: Сценарий обновлен
+      payload:
+        type: object
+        required:
+          - eventId
+          - eventType
+          - scenarioId
+          - updatedBy
+          - timestamp
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          eventType:
+            type: string
+            const: scenario.updated
+          scenarioId:
+            type: string
+            format: uuid
+          changes:
+            type: array
+            items:
+              type: string
+          updatedBy:
+            type: string
+            format: uuid
+          timestamp:
+            type: string
+            format: date-time
+
+    ScenarioDeleted:
+      name: ScenarioDeleted
+      title: Сценарий удален
+      payload:
+        type: object
+        required:
+          - eventId
+          - eventType
+          - scenarioId
+          - deletedBy
+          - timestamp
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          eventType:
+            type: string
+            const: scenario.deleted
+          scenarioId:
+            type: string
+            format: uuid
+          deletedBy:
+            type: string
+            format: uuid
+          reason:
+            type: string
+          timestamp:
+            type: string
+            format: date-time
+
+    ScenarioTriggered:
+      name: ScenarioTriggered
+      title: Сценарий сработал
+      payload:
+        type: object
+        required:
+          - eventId
+          - eventType
+          - scenarioId
+          - triggerEvent
+          - timestamp
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          eventType:
+            type: string
+            const: scenario.triggered
+          scenarioId:
+            type: string
+            format: uuid
+          triggerEvent:
+            type: object
+            properties:
+              type:
+                type: string
+              source:
+                type: string
+              data:
+                type: object
+          timestamp:
+            type: string
+            format: date-time
+
+    ScenarioExecuted:
+      name: ScenarioExecuted
+      title: Сценарий выполнен
+      payload:
+        type: object
+        required:
+          - eventId
+          - eventType
+          - executionId
+          - scenarioId
+          - status
+          - timestamp
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          eventType:
+            type: string
+            const: scenario.executed
+          executionId:
+            type: string
+            format: uuid
+          scenarioId:
+            type: string
+            format: uuid
+          status:
+            type: string
+            enum: [completed, failed, partial]
+          actionsExecuted:
+            type: integer
+          actionsFailed:
+            type: integer
+          executionTime:
+            type: integer
+          timestamp:
+            type: string
+            format: date-time
+
+    CommandSent:
+      name: CommandSent
+      title: Команда отправлена
+      payload:
+        type: object
+        required:
+          - eventId
+          - eventType
+          - commandId
+          - deviceId
+          - command
+          - timestamp
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          eventType:
+            type: string
+            const: command.sent
+          commandId:
+            type: string
+            format: uuid
+          deviceId:
+            type: string
+            format: uuid
+          command:
+            type: string
+          parameters:
+            type: object
+          source:
+            type: string
+            enum: [scenario, manual, schedule]
+          timestamp:
+            type: string
+            format: date-time

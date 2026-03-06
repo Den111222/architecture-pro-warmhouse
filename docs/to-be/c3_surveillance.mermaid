@@ -1,0 +1,189 @@
+graph TB
+    %% Стили
+    classDef external fill:#6C47B0,color:#fff,stroke:#333
+    classDef framework fill:#E67E22,color:#fff,stroke:#333
+    classDef repo fill:#28B463,color:#fff,stroke:#333
+    classDef presenter fill:#9B59B6,color:#fff,stroke:#333
+    classDef service fill:#F39C12,color:#fff,stroke:#333
+    classDef domain fill:#7F8C8D,color:#fff,stroke:#333
+
+    subgraph "Слой 0: Внешние системы"
+        PG[(PostgreSQL)]:::external
+        Kafka[(Kafka)]:::external
+        MinIO[(MinIO Storage)]:::external
+        Cameras["RTSP Cameras"]:::external
+    end
+
+    subgraph "Слой 4: Фреймворки и реализации"
+        FastAPI["FastAPI Framework"]:::framework
+        AsyncPG["asyncpg"]:::framework
+        Aiokafka["aiokafka"]:::framework
+        OpenCV["opencv-python"]:::framework
+        AIOBoto3["aioboto3 (S3 client)"]:::framework
+
+        PostgresCameraRepo["PostgresCameraRepository
+        (реализация CameraRepository)"]:::framework
+        PostgresRecordingRepo["PostgresRecordingRepository
+        (реализация RecordingRepository)"]:::framework
+
+        CameraGatewayImpl["RTSPCameraGateway
+        (реализация CameraGateway)"]:::framework
+        StorageGatewayImpl["S3StorageGateway
+        (реализация StorageGateway)"]:::framework
+        KafkaPublisherImpl["KafkaEventPublisher"]:::framework
+        KafkaSubscriberImpl["KafkaEventSubscriber"]:::framework
+
+        DIContainer["DI Container"]:::framework
+    end
+
+    subgraph "Слой 3A: Интерфейсы"
+        ICameraRepo["<<interface>>
+        CameraRepository"]:::repo
+
+        IRecordingRepo["<<interface>>
+        RecordingRepository"]:::repo
+
+        ICameraGateway["<<interface>>
+        CameraGateway"]:::repo
+
+        IStorageGateway["<<interface>>
+        StorageGateway"]:::repo
+
+        IEventPublisher["<<interface>>
+        EventPublisher"]:::repo
+
+        IEventSubscriber["<<interface>>
+        EventSubscriber"]:::repo
+    end
+
+    subgraph "Слой 3B: Representation"
+        CameraRouter["CameraRouter
+        (/cameras/*)"]:::presenter
+        StreamRouter["StreamRouter
+        (/streams/*)"]:::presenter
+        RecordingRouter["RecordingRouter
+        (/recordings/*)"]:::presenter
+        EventRouter["EventRouter
+        (/events/*)"]:::presenter
+
+        CameraController["CameraController"]:::presenter
+        StreamController["StreamController"]:::presenter
+        RecordingController["RecordingController"]:::presenter
+        EventController["EventController"]:::presenter
+
+        GetCurrentUserDep["get_current_user()"]:::presenter
+        CheckHomeAccessDep["check_home_access()"]:::presenter
+
+        JSONPresenter["JSONPresenter"]:::presenter
+        CameraDTO["CameraDTO"]:::presenter
+        RecordingDTO["RecordingDTO"]:::presenter
+        EventDTO["EventDTO"]:::presenter
+    end
+
+    subgraph "Слой 2: Use Cases"
+        GetCamerasUC["GetCamerasUseCase"]:::service
+        GetStreamUC["GetStreamUseCase"]:::service
+        GetSnapshotUC["GetSnapshotUseCase"]:::service
+        StartRecordingUC["StartRecordingUseCase"]:::service
+        StopRecordingUC["StopRecordingUseCase"]:::service
+        GetRecordingsUC["GetRecordingsUseCase"]:::service
+        ProcessMotionUC["ProcessMotionUseCase"]:::service
+        HandleDoorEventUC["HandleDoorEventUseCase"]:::service
+    end
+
+    subgraph "Слой 1: Domain"
+        CameraEntity["Camera Entity"]:::domain
+        RecordingEntity["Recording Entity"]:::domain
+        EventEntity["Event Entity"]:::domain
+
+        RecordingStarted["RecordingStarted Event"]:::domain
+        RecordingStopped["RecordingStopped Event"]:::domain
+        MotionDetected["MotionDetected Event"]:::domain
+    end
+
+    %% Связи
+    DIContainer --> PostgresCameraRepo
+    DIContainer --> PostgresRecordingRepo
+    DIContainer --> CameraGatewayImpl
+    DIContainer --> StorageGatewayImpl
+    DIContainer --> KafkaPublisherImpl
+    DIContainer --> KafkaSubscriberImpl
+
+    FastAPI --> CameraRouter
+    FastAPI --> StreamRouter
+    FastAPI --> RecordingRouter
+    FastAPI --> EventRouter
+
+    CameraRouter --> CameraController
+    StreamRouter --> StreamController
+    RecordingRouter --> RecordingController
+    EventRouter --> EventController
+
+    CameraController --> GetCurrentUserDep
+    CameraController --> CheckHomeAccessDep
+    StreamController --> CheckHomeAccessDep
+    RecordingController --> CheckHomeAccessDep
+
+    CameraController --> GetCamerasUC
+    StreamController --> GetStreamUC
+    StreamController --> GetSnapshotUC
+    RecordingController --> StartRecordingUC
+    RecordingController --> StopRecordingUC
+    RecordingController --> GetRecordingsUC
+    EventController --> ProcessMotionUC
+
+    CameraController --> JSONPresenter
+    CameraController --> CameraDTO
+    RecordingController --> RecordingDTO
+    EventController --> EventDTO
+
+    GetCamerasUC --> ICameraRepo
+    GetCamerasUC --> CameraEntity
+
+    GetStreamUC --> ICameraRepo
+    GetStreamUC --> ICameraGateway
+
+    GetSnapshotUC --> ICameraGateway
+
+    StartRecordingUC --> ICameraRepo
+    StartRecordingUC --> ICameraGateway
+    StartRecordingUC --> IEventPublisher
+    StartRecordingUC --> RecordingEntity
+    StartRecordingUC --> RecordingStarted
+
+    StopRecordingUC --> IRecordingRepo
+    StopRecordingUC --> IStorageGateway
+    StopRecordingUC --> IEventPublisher
+    StopRecordingUC --> RecordingEntity
+    StopRecordingUC --> RecordingStopped
+
+    GetRecordingsUC --> IRecordingRepo
+    GetRecordingsUC --> RecordingEntity
+
+    ProcessMotionUC --> IRecordingRepo
+    ProcessMotionUC --> IEventPublisher
+    ProcessMotionUC --> EventEntity
+    ProcessMotionUC --> MotionDetected
+
+    ICameraRepo -.-> PostgresCameraRepo
+    IRecordingRepo -.-> PostgresRecordingRepo
+    ICameraGateway -.-> CameraGatewayImpl
+    IStorageGateway -.-> StorageGatewayImpl
+    IEventPublisher -.-> KafkaPublisherImpl
+    IEventSubscriber -.-> KafkaSubscriberImpl
+
+    PostgresCameraRepo --> AsyncPG
+    PostgresRecordingRepo --> AsyncPG
+    AsyncPG --> PG
+
+    CameraGatewayImpl --> OpenCV
+    OpenCV --> Cameras
+
+    StorageGatewayImpl --> AIOBoto3
+    AIOBoto3 --> MinIO
+
+    KafkaPublisherImpl --> Aiokafka
+    KafkaSubscriberImpl --> Aiokafka
+    Aiokafka --> Kafka
+
+    KafkaSubscriberImpl --> HandleDoorEventUC
