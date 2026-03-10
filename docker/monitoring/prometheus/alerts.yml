@@ -1,0 +1,131 @@
+groups:
+  - name: smart_home_alerts
+    interval: 30s
+    rules:
+      # Критические алерты - сервисы умерли
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: 'backend'
+        annotations:
+          summary: "Service {{ $labels.service }} is down"
+          description: "{{ $labels.service }} has been down for more than 1 minute"
+          runbook: "https://wiki.teplydom.ru/runbooks/service-down"
+
+      # Предупреждения - высокая нагрузка
+      - alert: HighCPUUsage
+        expr: rate(process_cpu_seconds_total[5m]) > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          team: 'backend'
+        annotations:
+          summary: "High CPU usage on {{ $labels.service }}"
+          description: "CPU usage is {{ $value }}%"
+
+      - alert: HighMemoryUsage
+        expr: process_resident_memory_bytes > 1e9
+        for: 5m
+        labels:
+          severity: warning
+          team: 'backend'
+        annotations:
+          summary: "High memory usage on {{ $labels.service }}"
+          description: "Memory usage is {{ $value }} bytes"
+
+      # Kafka алерты
+      - alert: KafkaHighLag
+        expr: kafka_consumer_lag > 1000
+        for: 5m
+        labels:
+          severity: warning
+          team: 'data'
+        annotations:
+          summary: "High Kafka consumer lag"
+          description: "Consumer lag is {{ $value }} on topic {{ $labels.topic }}"
+
+      - alert: KafkaUnderReplicated
+        expr: kafka_topic_partition_under_replicated > 0
+        for: 5m
+        labels:
+          severity: critical
+          team: 'data'
+        annotations:
+          summary: "Kafka topic under replicated"
+          description: "Topic {{ $labels.topic }} has under-replicated partitions"
+
+      # Базы данных
+      - alert: PostgresConnectionsHigh
+        expr: pg_stat_database_numbackends > 100
+        for: 2m
+        labels:
+          severity: warning
+          team: 'dba'
+        annotations:
+          summary: "High number of Postgres connections"
+          description: "Number of backends is {{ $value }}"
+
+      - alert: PostgresDeadlocks
+        expr: rate(pg_stat_database_deadlocks[5m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+          team: 'dba'
+        annotations:
+          summary: "Postgres deadlocks detected"
+          description: "Deadlocks are occurring at rate {{ $value }}"
+
+      # Дисковое пространство
+      - alert: DiskSpaceLow
+        expr: (node_filesystem_avail_bytes / node_filesystem_size_bytes) * 100 < 10
+        for: 5m
+        labels:
+          severity: critical
+          team: 'ops'
+        annotations:
+          summary: "Low disk space"
+          description: "Disk space is below 10% on {{ $labels.device }}"
+
+      # API метрики
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          team: 'backend'
+        annotations:
+          summary: "High error rate on {{ $labels.service }}"
+          description: "Error rate is {{ $value }}%"
+
+      - alert: SlowResponses
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+          team: 'backend'
+        annotations:
+          summary: "Slow responses on {{ $labels.service }}"
+          description: "95th percentile response time is {{ $value }}s"
+
+      # Бизнес метрики
+      - alert: LowDeviceRegistration
+        expr: rate(device_registrations_total[24h]) < 10
+        for: 6h
+        labels:
+          severity: info
+          team: 'product'
+        annotations:
+          summary: "Low device registration rate"
+          description: "Only {{ $value }} devices registered in last 24h"
+
+      - alert: FailedLogins
+        expr: rate(failed_logins_total[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+          team: 'security'
+        annotations:
+          summary: "High number of failed logins"
+          description: "{{ $value }} failed logins in last 5 minutes"

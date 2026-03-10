@@ -1,0 +1,142 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'smart-home'
+
+# Правила алертов
+rule_files:
+  - "alerts.yml"
+
+# Настройки алертинга
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []
+          # Если будет Alertmanager - добавить сюда
+
+# Список целей для сбора метрик
+scrape_configs:
+  # Сам Prometheus
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          service: 'monitoring'
+
+  # API Gateway
+  - job_name: 'api-gateway'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['api-gateway:8080']
+        labels:
+          service: 'gateway'
+          environment: 'production'
+
+  # User Service
+  - job_name: 'user-service'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['user-service:8086']
+        labels:
+          service: 'user'
+          domain: 'auth'
+
+  # Device Registry
+  - job_name: 'device-registry'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['device-registry:8081']
+        labels:
+          service: 'device'
+          domain: 'registry'
+
+  # Heating Control
+  - job_name: 'heating-control'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['heating-control:8082']
+        labels:
+          service: 'heating'
+          domain: 'climate'
+
+  # Lighting Control
+  - job_name: 'lighting-control'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['lighting-control:8083']
+        labels:
+          service: 'lighting'
+          domain: 'climate'
+
+  # Access Control
+  - job_name: 'access-control'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['access-control:8084']
+        labels:
+          service: 'access'
+          domain: 'security'
+
+  # Surveillance
+  - job_name: 'surveillance'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['surveillance:8085']
+        labels:
+          service: 'surveillance'
+          domain: 'security'
+
+  # Scenarios Engine
+  - job_name: 'scenarios-engine'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['scenarios-engine:8087']
+        labels:
+          service: 'scenarios'
+          domain: 'automation'
+
+  # Kafka
+  - job_name: 'kafka'
+    static_configs:
+      - targets: ['kafka:9092']
+        labels:
+          service: 'kafka'
+          type: 'message-broker'
+    metrics_path: /metrics
+    # Для Kafka экспортера (нужно добавить отдельно)
+
+  # PostgreSQL
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres:5432']
+        labels:
+          service: 'postgres'
+          type: 'database'
+    # Для Postgres экспортера
+
+  # Valkey (Redis)
+  - job_name: 'valkey'
+    static_configs:
+      - targets: ['valkey:6379']
+        labels:
+          service: 'valkey'
+          type: 'cache'
+
+  # MinIO
+  - job_name: 'minio'
+    metrics_path: /minio/v2/metrics/cluster
+    static_configs:
+      - targets: ['minio:9000']
+        labels:
+          service: 'minio'
+          type: 'storage'
+
+  # Mosquitto (MQTT)
+  - job_name: 'mosquitto'
+    static_configs:
+      - targets: ['mosquitto:1883']
+        labels:
+          service: 'mosquitto'
+          type: 'mqtt-broker'
+    # Для Mosquitto экспортера
