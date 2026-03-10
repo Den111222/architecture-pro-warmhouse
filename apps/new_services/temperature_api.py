@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, APIRouter
 import random
 import uvicorn
 from typing import Optional
@@ -9,6 +9,8 @@ app = FastAPI(
     version="1.0.0"
 )
 
+router = APIRouter()
+
 # Маппинг комнат и sensorId
 LOCATIONS = {
     "1": "Living Room",
@@ -17,10 +19,10 @@ LOCATIONS = {
 }
 
 
-@app.get("/temperature")
+@router.get("/temperature/{sensorId}")
 async def get_temperature(
-    location: Optional[str] = Query(None, description="Название комнаты"),
-    sensorId: Optional[str] = Query(None, description="ID датчика")
+    sensorId: Optional[str],
+    location: Optional[str] = Query(None, description="Название комнаты")
 ):
     """
     Возвращает случайную температуру для указанной комнаты или датчика
@@ -53,20 +55,21 @@ async def get_temperature(
     temperature = round(random.uniform(18.0, 26.0), 1)
 
     return {
+        "value": temperature,  # ← КЛЮЧЕВОЙ момент: должно быть "value"
+        "status": "online",
+        "lastUpdated": None,
         "sensorId": sid,
         "location": loc,
-        "temperature": temperature,
-        "unit": "Celsius",
-        "timestamp": None  # можно добавить datetime.now() если нужно
+        "unit": "Celsius"
     }
 
 
-@app.get("/health")
+@router.get("/health")
 async def health():
     return {"status": "healthy"}
 
 
-@app.get("/")
+@router.get("/")
 async def root():
     return {
         "name": "Temperature API",
@@ -77,6 +80,7 @@ async def root():
         }
     }
 
+app.include_router(router)
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8081)
