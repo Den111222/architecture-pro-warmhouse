@@ -1,0 +1,219 @@
+graph TB
+    %% Стили
+    classDef external fill:#6C47B0,color:#fff,stroke:#333
+    classDef framework fill:#E67E22,color:#fff,stroke:#333
+    classDef repo fill:#28B463,color:#fff,stroke:#333
+    classDef presenter fill:#9B59B6,color:#fff,stroke:#333
+    classDef service fill:#F39C12,color:#fff,stroke:#333
+    classDef domain fill:#7F8C8D,color:#fff,stroke:#333
+
+    subgraph "Слой 0: Внешние системы"
+        PG[(PostgreSQL)]:::external
+        Kafka[(Kafka)]:::external
+        MQTT["MQTT Broker"]:::external
+        SMS["SMS Gateway"]:::external
+    end
+
+    subgraph "Слой 4: Фреймворки и реализации"
+        FastAPI["FastAPI Framework"]:::framework
+        AsyncPG["asyncpg"]:::framework
+        Aiokafka["aiokafka"]:::framework
+        AioMQTT["asyncio-mqtt"]:::framework
+        HTTPX["httpx"]:::framework
+
+        PostgresLockRepo["PostgresLockRepository
+        (реализация LockRepository)"]:::framework
+        PostgresPermissionRepo["PostgresPermissionRepository
+        (реализация PermissionRepository)"]:::framework
+        PostgresAuditRepo["PostgresAuditRepository
+        (реализация AuditRepository)"]:::framework
+
+        MQTTGatewayImpl["MQTTDeviceGateway
+        (реализация DeviceGateway)"]:::framework
+        SMSGatewayImpl["SMSGateway
+        (реализация SMSGateway)"]:::framework
+        KafkaPublisherImpl["KafkaEventPublisher"]:::framework
+        KafkaSubscriberImpl["KafkaEventSubscriber"]:::framework
+
+        DIContainer["DI Container"]:::framework
+    end
+
+    subgraph "Слой 3A: Интерфейсы"
+        ILockRepo["<<interface>>
+        LockRepository"]:::repo
+
+        IPermissionRepo["<<interface>>
+        PermissionRepository"]:::repo
+
+        IAuditRepo["<<interface>>
+        AuditRepository"]:::repo
+
+        IDeviceGateway["<<interface>>
+        DeviceGateway"]:::repo
+
+        ISMSGateway["<<interface>>
+        SMSGateway"]:::repo
+
+        IEventPublisher["<<interface>>
+        EventPublisher"]:::repo
+
+        IEventSubscriber["<<interface>>
+        EventSubscriber"]:::repo
+    end
+
+    subgraph "Слой 3B: Representation"
+        LockRouter["LockRouter
+        (/locks/*)"]:::presenter
+        GateRouter["GateRouter
+        (/gates/*)"]:::presenter
+        PermissionRouter["PermissionRouter
+        (/permissions/*)"]:::presenter
+        TemporaryRouter["TemporaryRouter
+        (/temporary/*)"]:::presenter
+        AuditRouter["AuditRouter
+        (/audit/*)"]:::presenter
+
+        LockController["LockController"]:::presenter
+        GateController["GateController"]:::presenter
+        PermissionController["PermissionController"]:::presenter
+        TemporaryController["TemporaryController"]:::presenter
+        AuditController["AuditController"]:::presenter
+
+        GetCurrentUserDep["get_current_user()"]:::presenter
+        RequireAdminDep["require_admin()"]:::presenter
+
+        JSONPresenter["JSONPresenter"]:::presenter
+        LockDTO["LockDTO"]:::presenter
+        PermissionDTO["PermissionDTO"]:::presenter
+        AuditDTO["AuditDTO"]:::presenter
+    end
+
+    subgraph "Слой 2: Use Cases"
+        LockUC["LockUseCase"]:::service
+        UnlockUC["UnlockUseCase"]:::service
+        OpenGateUC["OpenGateUseCase"]:::service
+        CloseGateUC["CloseGateUseCase"]:::service
+
+        CreatePermissionUC["CreatePermissionUseCase"]:::service
+        RevokePermissionUC["RevokePermissionUseCase"]:::service
+
+        CreateTemporaryUC["CreateTemporaryAccessUseCase"]:::service
+        VerifyCodeUC["VerifyCodeUseCase"]:::service
+
+        GetAuditUC["GetAuditUseCase"]:::service
+
+        HandleUserDeletedUC["HandleUserDeletedUseCase"]:::service
+    end
+
+    subgraph "Слой 1: Domain"
+        LockEntity["Lock Entity"]:::domain
+        PermissionEntity["Permission Entity"]:::domain
+        AuditEntity["AuditEntry Entity"]:::domain
+        TemporaryCodeEntity["TemporaryCode Entity"]:::domain
+
+        DeviceLocked["DeviceLocked Event"]:::domain
+        DeviceUnlocked["DeviceUnlocked Event"]:::domain
+        GateOpened["GateOpened Event"]:::domain
+        PermissionGranted["PermissionGranted Event"]:::domain
+        CodeGenerated["TemporaryCodeGenerated Event"]:::domain
+
+        AccessService["AccessService
+        (проверка прав)"]:::service
+    end
+
+    %% Связи
+    DIContainer --> PostgresLockRepo
+    DIContainer --> PostgresPermissionRepo
+    DIContainer --> PostgresAuditRepo
+    DIContainer --> MQTTGatewayImpl
+    DIContainer --> SMSGatewayImpl
+    DIContainer --> KafkaPublisherImpl
+    DIContainer --> KafkaSubscriberImpl
+    DIContainer --> AccessService
+
+    FastAPI --> LockRouter
+    FastAPI --> GateRouter
+    FastAPI --> PermissionRouter
+    FastAPI --> TemporaryRouter
+    FastAPI --> AuditRouter
+
+    LockRouter --> LockController
+    GateRouter --> GateController
+    PermissionRouter --> PermissionController
+    TemporaryRouter --> TemporaryController
+    AuditRouter --> AuditController
+
+    LockController --> GetCurrentUserDep
+    LockController --> RequireAdminDep
+    PermissionController --> RequireAdminDep
+    TemporaryController --> GetCurrentUserDep
+
+    LockController --> LockUC
+    LockController --> UnlockUC
+    GateController --> OpenGateUC
+    GateController --> CloseGateUC
+    PermissionController --> CreatePermissionUC
+    PermissionController --> RevokePermissionUC
+    TemporaryController --> CreateTemporaryUC
+    TemporaryController --> VerifyCodeUC
+    AuditController --> GetAuditUC
+
+    LockController --> JSONPresenter
+    LockController --> LockDTO
+    PermissionController --> PermissionDTO
+    AuditController --> AuditDTO
+
+    LockUC --> IPermissionRepo
+    LockUC --> IDeviceGateway
+    LockUC --> IAuditRepo
+    LockUC --> IEventPublisher
+    LockUC --> LockEntity
+    LockUC --> PermissionEntity
+    LockUC --> AuditEntity
+    LockUC --> DeviceLocked
+
+    CreatePermissionUC --> IPermissionRepo
+    CreatePermissionUC --> IEventPublisher
+    CreatePermissionUC --> PermissionEntity
+    CreatePermissionUC --> PermissionGranted
+
+    CreateTemporaryUC --> IPermissionRepo
+    CreateTemporaryUC --> ISMSGateway
+    CreateTemporaryUC --> IEventPublisher
+    CreateTemporaryUC --> TemporaryCodeEntity
+    CreateTemporaryUC --> CodeGenerated
+
+    VerifyCodeUC --> IPermissionRepo
+    VerifyCodeUC --> IAuditRepo
+    VerifyCodeUC --> TemporaryCodeEntity
+
+    GetAuditUC --> IAuditRepo
+    GetAuditUC --> AuditEntity
+
+    HandleUserDeletedUC --> IPermissionRepo
+    HandleUserDeletedUC --> IAuditRepo
+
+    ILockRepo -.-> PostgresLockRepo
+    IPermissionRepo -.-> PostgresPermissionRepo
+    IAuditRepo -.-> PostgresAuditRepo
+    IDeviceGateway -.-> MQTTGatewayImpl
+    ISMSGateway -.-> SMSGatewayImpl
+    IEventPublisher -.-> KafkaPublisherImpl
+    IEventSubscriber -.-> KafkaSubscriberImpl
+
+    PostgresLockRepo --> AsyncPG
+    PostgresPermissionRepo --> AsyncPG
+    PostgresAuditRepo --> AsyncPG
+    AsyncPG --> PG
+
+    MQTTGatewayImpl --> AioMQTT
+    AioMQTT --> MQTT
+
+    SMSGatewayImpl --> HTTPX
+    HTTPX --> SMS
+
+    KafkaPublisherImpl --> Aiokafka
+    KafkaSubscriberImpl --> Aiokafka
+    Aiokafka --> Kafka
+
+    KafkaSubscriberImpl --> HandleUserDeletedUC

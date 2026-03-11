@@ -1,0 +1,301 @@
+erDiagram
+    %% ========== USER SERVICE ==========
+    USERS ||--o{ HOMES : owns
+    USERS ||--o{ INVITES : sends
+    USERS ||--o{ HOME_USERS : "member of"
+    USERS ||--o{ SUBSCRIPTIONS : has
+
+    HOMES ||--o{ HOME_USERS : contains
+    HOMES ||--o{ INVITES : "for"
+    HOMES ||--o{ ROLES : has
+
+    ROLES ||--o{ HOME_USERS : defines
+
+    %% ========== DEVICE REGISTRY ==========
+    HOMES ||--o{ DEVICES : contains
+    DEVICE_MODELS ||--o{ DEVICES : "is model of"
+
+    %% ========== HEATING ==========
+    DEVICES ||--o| THERMOSTATS : "has one"
+    DEVICES ||--o{ TEMPERATURE_READINGS : generates
+    DEVICES ||--o{ HEATING_SCHEDULES : has
+
+    %% ========== LIGHTING ==========
+    DEVICES ||--o| LIGHTS : "has one"
+    HOMES ||--o{ LIGHT_GROUPS : contains
+    HOMES ||--o{ LIGHTING_SCENES : contains
+
+    %% ========== ACCESS ==========
+    DEVICES ||--o| LOCKS : "has one"
+    DEVICES ||--o| GATES : "has one"
+    USERS ||--o{ PERMISSIONS : grants
+    DEVICES ||--o{ PERMISSIONS : "target of"
+    DEVICES ||--o{ TEMPORARY_CODES : generates
+    USERS ||--o{ AUDIT_LOG : performs
+    DEVICES ||--o{ AUDIT_LOG : "target of"
+
+    %% ========== SURVEILLANCE ==========
+    DEVICES ||--o| CAMERAS : "has one"
+    CAMERAS ||--o{ RECORDINGS : produces
+    CAMERAS ||--o{ SURVEILLANCE_EVENTS : detects
+    RECORDINGS ||--o{ SURVEILLANCE_EVENTS : contains
+
+    %% ========== SCENARIOS ==========
+    HOMES ||--o{ SCENARIOS : defines
+    SCENARIOS ||--o{ SCENARIO_EXECUTIONS : triggers
+
+    %% ========== TABLES ==========
+    USERS {
+        uuid id PK
+        string email UK
+        string password_hash
+        string full_name
+        string phone
+        bool email_verified
+        string status
+        datetime created_at
+        datetime last_login
+    }
+
+    HOMES {
+        uuid id PK
+        string name
+        string address
+        string timezone
+        uuid owner_id FK
+        datetime created_at
+    }
+
+    HOME_USERS {
+        uuid user_id PK, FK
+        uuid home_id PK, FK
+        uuid role_id FK
+        string status
+        datetime joined_at
+    }
+
+    INVITES {
+        uuid id PK
+        string email
+        uuid home_id FK
+        uuid invited_by FK
+        uuid role_id FK
+        string status
+        string token UK
+        datetime created_at
+        datetime expires_at
+    }
+
+    ROLES {
+        uuid id PK
+        string name
+        string description
+        uuid home_id FK
+        json permissions
+        bool is_default
+        datetime created_at
+    }
+
+    SUBSCRIPTIONS {
+        uuid id PK
+        uuid user_id FK
+        string plan_id
+        string status
+        datetime start_date
+        datetime end_date
+        bool auto_renew
+    }
+
+    DEVICE_MODELS {
+        uuid id PK
+        string vendor
+        string model
+        string type
+        string protocol
+        json capabilities
+        json supported_commands
+        datetime created_at
+    }
+
+    DEVICES {
+        uuid id PK
+        uuid home_id FK
+        uuid model_id FK
+        string name
+        string serial_number UK
+        string auth_token
+        string status
+        string firmware_version
+        datetime last_seen_at
+        json settings
+        datetime created_at
+    }
+
+    THERMOSTATS {
+        uuid id PK
+        uuid device_id FK
+        float current_temp
+        float target_temp
+        string mode
+        int humidity
+        int battery
+        datetime last_updated
+    }
+
+    TEMPERATURE_READINGS {
+        uuid id PK
+        uuid device_id FK
+        float temperature
+        int humidity
+        int battery
+        datetime timestamp
+    }
+
+    HEATING_SCHEDULES {
+        uuid id PK
+        uuid device_id FK
+        string name
+        json days_of_week
+        time time
+        float target_temp
+        bool enabled
+        datetime created_at
+    }
+
+    LIGHTS {
+        uuid id PK
+        uuid device_id FK
+        bool power
+        int brightness
+        string color_hex
+        int color_temperature
+        bool online
+        datetime last_updated
+    }
+
+    LIGHT_GROUPS {
+        uuid id PK
+        uuid home_id FK
+        string name
+        json device_ids
+        datetime created_at
+    }
+
+    LIGHTING_SCENES {
+        uuid id PK
+        uuid home_id FK
+        string name
+        json actions
+        datetime created_at
+    }
+
+    LOCKS {
+        uuid id PK
+        uuid device_id FK
+        string state
+        int battery
+        datetime last_action
+        uuid last_action_by
+    }
+
+    GATES {
+        uuid id PK
+        uuid device_id FK
+        string state
+        datetime last_action
+        uuid last_action_by
+    }
+
+    PERMISSIONS {
+        uuid id PK
+        uuid user_id FK
+        uuid device_id FK
+        json actions
+        datetime valid_from
+        datetime valid_to
+        datetime created_at
+        uuid created_by
+    }
+
+    TEMPORARY_CODES {
+        uuid id PK
+        string code UK
+        string phone
+        uuid device_id FK
+        datetime valid_from
+        datetime valid_to
+        int uses
+        int max_uses
+        datetime created_at
+        uuid created_by
+    }
+
+    AUDIT_LOG {
+        uuid id PK
+        uuid user_id FK
+        uuid device_id FK
+        string action
+        string result
+        json details
+        string ip_address
+        datetime timestamp
+    }
+
+    CAMERAS {
+        uuid id PK
+        uuid device_id FK
+        string name
+        string model
+        string status
+        json capabilities
+        json settings
+        string stream_url
+        datetime last_seen
+    }
+
+    RECORDINGS {
+        uuid id PK
+        uuid camera_id FK
+        datetime started_at
+        datetime ended_at
+        int duration
+        int size
+        string path
+        string thumbnail_path
+        bool has_motion
+        datetime created_at
+    }
+
+    SURVEILLANCE_EVENTS {
+        uuid id PK
+        uuid camera_id FK
+        uuid recording_id FK
+        string type
+        float confidence
+        string snapshot_path
+        datetime timestamp
+    }
+
+    SCENARIOS {
+        uuid id PK
+        uuid home_id FK
+        string name
+        string description
+        json trigger
+        json conditions
+        json actions
+        bool enabled
+        datetime created_at
+        datetime updated_at
+    }
+
+    SCENARIO_EXECUTIONS {
+        uuid id PK
+        uuid scenario_id FK
+        datetime triggered_at
+        json trigger_data
+        json actions
+        string status
+        string error
+        datetime completed_at
+    }

@@ -1,0 +1,205 @@
+asyncapi: 2.5.0
+info:
+  title: Surveillance Events
+  version: 1.0.0
+  description: События видеонаблюдения
+
+channels:
+  camera.status.changed:
+    publish:
+      operationId: publishCameraStatusChanged
+      message:
+        $ref: '#/components/messages/CameraStatusChanged'
+
+  motion.detected:
+    publish:
+      operationId: publishMotionDetected
+      message:
+        $ref: '#/components/messages/MotionDetected'
+
+  person.detected:
+    publish:
+      operationId: publishPersonDetected
+      message:
+        $ref: '#/components/messages/PersonDetected'
+
+  recording.started:
+    publish:
+      operationId: publishRecordingStarted
+      message:
+        $ref: '#/components/messages/RecordingStarted'
+
+  recording.stopped:
+    publish:
+      operationId: publishRecordingStopped
+      message:
+        $ref: '#/components/messages/RecordingStopped'
+
+components:
+  messages:
+    CameraStatusChanged:
+      name: CameraStatusChanged
+      title: Статус камеры изменен
+      payload:
+        type: object
+        required:
+          - eventId
+          - eventType
+          - deviceId
+          - oldStatus
+          - newStatus
+          - timestamp
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          eventType:
+            type: string
+            const: camera.status.changed
+          deviceId:
+            type: string
+            format: uuid
+          oldStatus:
+            type: string
+            enum: [online, offline, recording]
+          newStatus:
+            type: string
+            enum: [online, offline, recording]
+          timestamp:
+            type: string
+            format: date-time
+
+    MotionDetected:
+      name: MotionDetected
+      title: Обнаружено движение
+      payload:
+        type: object
+        required:
+          - eventId
+          - eventType
+          - deviceId
+          - timestamp
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          eventType:
+            type: string
+            const: motion.detected
+          deviceId:
+            type: string
+            format: uuid
+          zone:
+            type: string
+          confidence:
+            type: number
+            format: float
+            minimum: 0
+            maximum: 1
+          snapshot:
+            type: string
+            format: uri
+          timestamp:
+            type: string
+            format: date-time
+
+    PersonDetected:
+      name: PersonDetected
+      title: Обнаружен человек
+      payload:
+        type: object
+        required:
+          - eventId
+          - eventType
+          - deviceId
+          - timestamp
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          eventType:
+            type: string
+            const: person.detected
+          deviceId:
+            type: string
+            format: uuid
+          confidence:
+            type: number
+            format: float
+          faceRecognized:
+            type: boolean
+          userId:
+            type: string
+            format: uuid
+          snapshot:
+            type: string
+            format: uri
+          timestamp:
+            type: string
+            format: date-time
+
+    RecordingStarted:
+      name: RecordingStarted
+      title: Запись начата
+      payload:
+        type: object
+        required:
+          - eventId
+          - eventType
+          - recordingId
+          - deviceId
+          - timestamp
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          eventType:
+            type: string
+            const: recording.started
+          recordingId:
+            type: string
+            format: uuid
+          deviceId:
+            type: string
+            format: uuid
+          reason:
+            type: string
+            enum: [manual, motion, schedule]
+          timestamp:
+            type: string
+            format: date-time
+
+    RecordingStopped:
+      name: RecordingStopped
+      title: Запись остановлена
+      payload:
+        type: object
+        required:
+          - eventId
+          - eventType
+          - recordingId
+          - deviceId
+          - duration
+          - timestamp
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          eventType:
+            type: string
+            const: recording.stopped
+          recordingId:
+            type: string
+            format: uuid
+          deviceId:
+            type: string
+            format: uuid
+          duration:
+            type: integer
+          size:
+            type: integer
+          hasMotion:
+            type: boolean
+          timestamp:
+            type: string
+            format: date-time

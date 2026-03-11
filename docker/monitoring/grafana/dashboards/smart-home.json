@@ -1,0 +1,133 @@
+{
+  "dashboard": {
+    "title": "Smart Home Dashboard",
+    "description": "Дашборд для мониторинга всех микросервисов",
+    "tags": ["smart-home", "production"],
+    "timezone": "browser",
+    "editable": true,
+    "refresh": "30s",
+    "panels": [
+      {
+        "title": "Service Health",
+        "type": "table",
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 0},
+        "targets": [
+          {
+            "expr": "up",
+            "format": "table",
+            "instant": true
+          }
+        ],
+        "options": {
+          "showHeader": true
+        }
+      },
+      {
+        "title": "API Request Rate",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+        "targets": [
+          {
+            "expr": "sum(rate(http_requests_total[5m])) by (service)",
+            "legendFormat": "{{service}}"
+          }
+        ]
+      },
+      {
+        "title": "API Error Rate",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+        "targets": [
+          {
+            "expr": "sum(rate(http_requests_total{status=~\"5..\"}[5m])) by (service)",
+            "legendFormat": "{{service}}"
+          }
+        ]
+      },
+      {
+        "title": "Response Time (95th percentile)",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, service))",
+            "legendFormat": "{{service}}"
+          }
+        ]
+      },
+      {
+        "title": "Kafka Consumer Lag",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+        "targets": [
+          {
+            "expr": "sum(kafka_consumer_lag) by (topic)",
+            "legendFormat": "{{topic}}"
+          }
+        ]
+      },
+      {
+        "title": "Database Connections",
+        "type": "graph",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24},
+        "targets": [
+          {
+            "expr": "pg_stat_database_numbackends",
+            "legendFormat": "{{datname}}"
+          }
+        ]
+      },
+      {
+        "title": "CPU Usage",
+        "type": "gauge",
+        "gridPos": {"h": 8, "w": 6, "x": 12, "y": 24},
+        "targets": [
+          {
+            "expr": "rate(process_cpu_seconds_total[5m])"
+          }
+        ]
+      },
+      {
+        "title": "Memory Usage",
+        "type": "gauge",
+        "gridPos": {"h": 8, "w": 6, "x": 18, "y": 24},
+        "targets": [
+          {
+            "expr": "process_resident_memory_bytes"
+          }
+        ]
+      },
+      {
+        "title": "Active Devices",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 4, "x": 0, "y": 32},
+        "targets": [
+          {
+            "expr": "count(devices_status{status=\"active\"})"
+          }
+        ]
+      },
+      {
+        "title": "Users Online",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 4, "x": 4, "y": 32},
+        "targets": [
+          {
+            "expr": "sum(users_online)"
+          }
+        ]
+      },
+      {
+        "title": "Today's Events",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 4, "x": 8, "y": 32},
+        "targets": [
+          {
+            "expr": "sum(increase(events_total[24h]))"
+          }
+        ]
+      }
+    ]
+  },
+  "overwrite": true
+}

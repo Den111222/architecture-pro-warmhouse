@@ -1,0 +1,23 @@
+graph TB
+    user[("Пользователь")]
+    support[("Специалист поддержки")]
+
+    subgraph "Существующая система Тёплый дом"
+        monolith[("Монолит (Go + PostgreSQL)")]
+    end
+
+    subgraph "Внешние системы"
+        sensors[("Датчики температуры")]
+    end
+
+    user -->|Веб-интерфейс| monolith
+    support -->|Админ-панель| monolith
+    monolith -.->|HTTP poll синхронно| sensors
+
+    classDef person fill:#08427B,color:#fff
+    classDef system fill:#1168BD,color:#fff
+    classDef external fill:#6C47B0,color:#fff
+
+    class user,support person
+    class monolith system
+    class sensors external

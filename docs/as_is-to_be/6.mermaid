@@ -1,0 +1,33 @@
+graph TB
+    subgraph "ФИНАЛ"
+        Gateway["API Gateway"]
+        Kafka["Kafka"]
+
+        User["User"]
+        Device["Device"]
+        Heating["Heating"]
+        Lighting["Lighting"]
+        Access["Access"]
+        Surveillance["Surveillance"]
+        Scenarios["Scenarios"]
+    end
+
+    Client --> Gateway
+    Gateway --> User
+    Gateway --> Device
+    Gateway --> Heating
+    Gateway --> Lighting
+    Gateway --> Access
+    Gateway --> Surveillance
+    Gateway --> Scenarios
+
+    User --> Kafka
+    Device --> Kafka
+    Heating --> Kafka
+    Lighting --> Kafka
+    Access --> Kafka
+    Surveillance --> Kafka
+    Scenarios --> Kafka
+
+    Monolith["Монолит
+    (выключен)"] -.-x Gateway

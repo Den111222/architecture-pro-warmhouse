@@ -1,0 +1,428 @@
+services:
+  # ========== INFRASTRUCTURE ==========
+  kafka:
+    image: apache/kafka:latest
+    container_name: smart_home_kafka
+    environment:
+      # KRaft режим (без ZooKeeper)
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_NODE_ID: 1
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+
+      # Слушатели
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+
+      # Настройки
+      KAFKA_NUM_PARTITIONS: 3
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+
+      # Cluster ID (обязательно!)
+      KAFKA_CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
+
+      KAFKA_JMX_OPTS: "-Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Dcom.sun.management.jmxremote.port=9999"
+    ports:
+      - "9092:9092"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    networks:
+      - smart_home_network
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "kafka.Kafka"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    restart: always
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: smart_home_kafka_ui
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+    ports:
+      - "8088:8080"
+    networks:
+      - smart_home_network
+    restart: always
+
+  # INIT КОНТЕЙНЕР НА PYTHON - создает топики
+  kafka-init:
+    build:
+      context: ..
+      dockerfile: ./docker/Dockerfile
+    container_name: smart_home_kafka_init
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+    entrypoint: ["python", "init_topics.py"]
+#    entrypoint: [ "tail", "-f", "/dev/null"]
+    depends_on:
+      kafka:
+        condition: service_healthy
+    restart: "no"
+    networks:
+      - smart_home_network
+
+  # ========== ЕДИНЫЙ POSTGRESQL ==========
+  postgres:
+    image: postgres:16-alpine
+    container_name: smart_home_postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    networks:
+      - smart_home_network
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres", "-d", "postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: always
+
+  # ========== ЕДИНЫЙ VALKEY (замена Redis) ==========
+  valkey:
+    image: valkey/valkey:8-alpine
+    container_name: smart_home_valkey
+    command: valkey-server --appendonly yes --requirepass password
+    ports:
+      - "6379:6379"
+    volumes:
+      - valkey_data:/data
+    networks:
+      - smart_home_network
+    healthcheck:
+      test: ["CMD", "valkey-cli", "-a", "password", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: always
+
+  # MinIO для Surveillance (видео хранилище)
+  minio:
+    image: minio/minio:latest
+    container_name: smart_home_minio
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - smart_home_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: always
+
+  # MQTT BROKER
+  mosquitto:
+    image: eclipse-mosquitto:latest
+    container_name: smart_home_mosquitto
+    ports:
+      - "1883:1883"
+      - "9002:9001"
+    volumes:
+      - ./mosquitto/config:/mosquitto/config
+      - ./mosquitto/data:/mosquitto/data
+      - ./mosquitto/log:/mosquitto/log
+    networks:
+      - smart_home_network
+    healthcheck:
+      test: ["CMD", "mosquitto_sub", "-t", "$$SYS/#", "-C", "1", "-i", "healthcheck"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: always
+
+  # ========== МИКРОСЕРВИСЫ ==========
+  user-service:
+    build:
+      context: ..
+      dockerfile: ./docker/Dockerfile
+    container_name: smart_home_user_service
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/user_service
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - VALKEY_HOST=valkey
+      - VALKEY_PORT=6379
+      - VALKEY_PASSWORD=password
+      - VALKEY_DB=0
+      - JWT_SECRET=super-secret-jwt-key
+      - SMTP_HOST=smtp.gmail.com
+      - SMTP_PORT=587
+      - SMTP_USER=user
+      - SMTP_PASSWORD=password
+    ports:
+      - "8086:8086"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+      valkey:
+        condition: service_healthy
+    entrypoint: ["python", "user_service.py"]
+#    entrypoint: [ "tail", "-f", "/dev/null"]
+    networks:
+      - smart_home_network
+    restart: always
+
+  device-registry:
+    build:
+      context: ..
+      dockerfile: ./docker/Dockerfile
+    container_name: smart_home_device_registry
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/device_registry
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - VALKEY_HOST=valkey
+      - VALKEY_PORT=6379
+      - VALKEY_PASSWORD=password
+      - VALKEY_DB=1
+    ports:
+      - "8089:8081"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+      valkey:
+        condition: service_healthy
+    entrypoint: ["python", "device_registry.py"]
+    networks:
+      - smart_home_network
+    restart: always
+
+  heating-control:
+    build:
+      context: ..
+      dockerfile: ./docker/Dockerfile
+    container_name: smart_home_heating_control
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/heating_service
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - MQTT_BROKER_URL=mqtt://mosquitto:1883
+      - VALKEY_HOST=valkey
+      - VALKEY_PORT=6379
+      - VALKEY_PASSWORD=password
+      - VALKEY_DB=2
+    ports:
+      - "8082:8082"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+      mosquitto:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+    entrypoint: ["python", "heating_control.py"]
+    networks:
+      - smart_home_network
+    restart: always
+
+  lighting-control:
+    build:
+      context: ..
+      dockerfile: ./docker/Dockerfile
+    container_name: smart_home_lighting_control
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/lighting_service
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - MQTT_BROKER_URL=mqtt://mosquitto:1883
+      - VALKEY_HOST=valkey
+      - VALKEY_PORT=6379
+      - VALKEY_PASSWORD=password
+      - VALKEY_DB=3
+    ports:
+      - "8083:8083"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+      mosquitto:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+    entrypoint: ["python", "lighting_control.py"]
+    networks:
+      - smart_home_network
+    restart: always
+
+  access-control:
+    build:
+      context: ..
+      dockerfile: ./docker/Dockerfile
+    container_name: smart_home_access_control
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/access_service
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - MQTT_BROKER_URL=mqtt://mosquitto:1883
+      - VALKEY_HOST=valkey
+      - VALKEY_PORT=6379
+      - VALKEY_PASSWORD=password
+      - VALKEY_DB=4
+      - SMS_API_KEY=sms-api-key
+    ports:
+      - "8084:8084"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+      mosquitto:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+    entrypoint: ["python", "access_control.py"]
+    networks:
+      - smart_home_network
+    restart: always
+
+  surveillance:
+    build:
+      context: ..
+      dockerfile: ./docker/Dockerfile
+    container_name: smart_home_surveillance
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - MINIO_BUCKET=recordings
+      - VALKEY_HOST=valkey
+      - VALKEY_PORT=6379
+      - VALKEY_PASSWORD=password
+      - VALKEY_DB=5
+    ports:
+      - "8085:8085"
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
+      minio:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+    entrypoint: ["python", "surveillance.py"]
+    networks:
+      - smart_home_network
+    restart: always
+
+  scenarios-engine:
+    build:
+      context: ..
+      dockerfile: ./docker/Dockerfile
+    container_name: smart_home_scenarios_engine
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/scenarios_service
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - VALKEY_HOST=valkey
+      - VALKEY_PORT=6379
+      - VALKEY_PASSWORD=password
+      - VALKEY_DB=6
+    ports:
+      - "8087:8087"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka-init:
+        condition: service_completed_successfully
+      valkey:
+        condition: service_healthy
+    entrypoint: ["python", "scenarios_engine.py"]
+    networks:
+      - smart_home_network
+    restart: always
+
+  # API Gateway
+  api-gateway:
+    build:
+      context: ..
+      dockerfile: ./docker/Dockerfile
+    container_name: smart_home_api_gateway
+    environment:
+      - USER_SERVICE_URL=http://user-service:8086
+      - DEVICE_SERVICE_URL=http://device-registry:8081
+      - HEATING_SERVICE_URL=http://heating-control:8082
+      - LIGHTING_SERVICE_URL=http://lighting-control:8083
+      - ACCESS_SERVICE_URL=http://access-control:8084
+      - SURVEILLANCE_SERVICE_URL=http://surveillance:8085
+      - SCENARIOS_SERVICE_URL=http://scenarios-engine:8087
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - VALKEY_HOST=valkey
+      - VALKEY_PORT=6379
+      - VALKEY_PASSWORD=password
+    ports:
+      - "8888:8080"
+    depends_on:
+      kafka-init:
+        condition: service_completed_successfully
+      valkey:
+        condition: service_healthy
+    entrypoint: ["python", "api_gateway.py"]
+    networks:
+      - smart_home_network
+    restart: unless-stopped
+
+  # ========== MONITORING ==========
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: smart_home_prometheus
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - smart_home_network
+    restart: always
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: smart_home_grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+    volumes:
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    networks:
+      - smart_home_network
+    restart: always
+
+# ========== VOLUMES ==========
+volumes:
+  kafka_data:
+  postgres_data:
+  valkey_data:
+  minio_data:
+  prometheus_data:
+  grafana_data:
+
+# ========== NETWORKS ==========
+networks:
+  smart_home_network:
+    driver: bridge
+    name: smart_home_network

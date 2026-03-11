@@ -1,0 +1,236 @@
+graph TB
+    %% Стили
+    classDef external fill:#6C47B0,color:#fff,stroke:#333
+    classDef framework fill:#E67E22,color:#fff,stroke:#333
+    classDef repo fill:#28B463,color:#fff,stroke:#333
+    classDef presenter fill:#9B59B6,color:#fff,stroke:#333
+    classDef service fill:#F39C12,color:#fff,stroke:#333
+    classDef domain fill:#7F8C8D,color:#fff,stroke:#333
+
+    subgraph "Слой 0: Внешние системы"
+        PG[(PostgreSQL)]:::external
+        Kafka[(Kafka)]:::external
+        MQTT["MQTT Broker"]:::external
+    end
+
+    subgraph "Слой 4: Фреймворки и реализации"
+        FastAPI["FastAPI Framework"]:::framework
+        AsyncPG["asyncpg (PostgreSQL driver)"]:::framework
+        Aiokafka["aiokafka (Kafka client)"]:::framework
+        AioMQTT["asyncio-mqtt (MQTT client)"]:::framework
+
+        PostgresStateRepo["PostgresStateRepository
+        (реализация StateRepository)"]:::framework
+        PostgresScheduleRepo["PostgresScheduleRepository
+        (реализация ScheduleRepository)"]:::framework
+        MQTTGatewayImpl["MQTTDeviceGateway
+        (реализация DeviceGateway)"]:::framework
+        KafkaPublisherImpl["KafkaEventPublisher
+        (реализация EventPublisher)"]:::framework
+        KafkaSubscriberImpl["KafkaEventSubscriber
+        (реализация EventSubscriber)"]:::framework
+
+        DIContainer["DI Container
+        (сборка зависимостей)"]:::framework
+    end
+
+    subgraph "Слой 3A: Интерфейсы (Contracts)"
+        direction TB
+
+        IStateRepo["<<interface>>
+        StateRepository"]:::repo
+
+        IScheduleRepo["<<interface>>
+        ScheduleRepository"]:::repo
+
+        IDeviceGateway["<<interface>>
+        DeviceGateway"]:::repo
+
+        IEventPublisher["<<interface>>
+        EventPublisher"]:::repo
+
+        IEventSubscriber["<<interface>>
+        EventSubscriber"]:::repo
+    end
+
+    subgraph "Слой 3B: Representation (Адаптеры)"
+        direction TB
+
+        subgraph "Routers"
+            ThermostatRouter["ThermostatRouter
+            (маршруты /thermostat/*)"]:::presenter
+            ScheduleRouter["ScheduleRouter
+            (маршруты /schedules/*)"]:::presenter
+            HistoryRouter["HistoryRouter
+            (маршруты /history/*)"]:::presenter
+        end
+
+        subgraph "Controllers"
+            ThermostatController["ThermostatController
+            (обработка запросов)"]:::presenter
+            ScheduleController["ScheduleController
+            (обработка запросов)"]:::presenter
+            HistoryController["HistoryController
+            (обработка запросов)"]:::presenter
+        end
+
+        subgraph "Dependencies"
+            GetCurrentUserDep["get_current_user()
+            (получение пользователя)"]:::presenter
+            CheckDeviceAccessDep["check_device_access()
+            (проверка доступа)"]:::presenter
+        end
+
+        subgraph "Presenters & DTOs"
+            JSONPresenter["JSONPresenter
+            (форматирование ответов)"]:::presenter
+            TemperatureDTO["TemperatureDTO
+            (Pydantic модель)"]:::presenter
+            ScheduleDTO["ScheduleDTO
+            (Pydantic модель)"]:::presenter
+        end
+    end
+
+    subgraph "Слой 2: Use Cases"
+        direction TB
+
+        GetStateUC["GetStateUseCase
+        (получение состояния)"]:::service
+
+        SetTargetTempUC["SetTargetTemperatureUseCase
+        (установка температуры)"]:::service
+
+        SetModeUC["SetModeUseCase
+        (смена режима)"]:::service
+
+        CreateScheduleUC["CreateScheduleUseCase
+        (создание расписания)"]:::service
+
+        GetHistoryUC["GetHistoryUseCase
+        (история показаний)"]:::service
+
+        ProcessTelemetryUC["ProcessTelemetryUseCase
+        (обработка телеметрии)"]:::service
+
+        HandleScheduleTriggerUC["HandleScheduleTriggerUseCase
+        (обработка расписания)"]:::service
+    end
+
+    subgraph "Слой 1: Domain"
+        direction TB
+
+        AccessService["AccessService
+        (проверка прав доступа)"]:::service
+
+        ThermostatEntity["Thermostat Entity"]:::domain
+        ScheduleEntity["Schedule Entity"]:::domain
+        TemperatureReadingVO["TemperatureReading VO"]:::domain
+
+        TemperatureChanged["TemperatureChanged Event"]:::domain
+        ModeChanged["ModeChanged Event"]:::domain
+        ScheduleTriggered["ScheduleTriggered Event"]:::domain
+    end
+
+    %% ========== СВЯЗИ ==========
+
+    %% DI Container связи
+    DIContainer --> PostgresStateRepo
+    DIContainer --> PostgresScheduleRepo
+    DIContainer --> MQTTGatewayImpl
+    DIContainer --> KafkaPublisherImpl
+    DIContainer --> KafkaSubscriberImpl
+    DIContainer --> AccessService
+    DIContainer --> GetStateUC
+    DIContainer --> SetTargetTempUC
+    DIContainer --> SetModeUC
+    DIContainer --> CreateScheduleUC
+    DIContainer --> GetHistoryUC
+    DIContainer --> ProcessTelemetryUC
+    DIContainer --> HandleScheduleTriggerUC
+
+    %% FastAPI → Routers
+    FastAPI --> ThermostatRouter
+    FastAPI --> ScheduleRouter
+    FastAPI --> HistoryRouter
+
+    %% Routers → Controllers
+    ThermostatRouter --> ThermostatController
+    ScheduleRouter --> ScheduleController
+    HistoryRouter --> HistoryController
+
+    %% Controllers → Dependencies
+    ThermostatController --> CheckDeviceAccessDep
+    ScheduleController --> CheckDeviceAccessDep
+    HistoryController --> CheckDeviceAccessDep
+
+    CheckDeviceAccessDep --> GetCurrentUserDep
+    CheckDeviceAccessDep --> AccessService
+
+    %% Controllers → Use Cases
+    ThermostatController --> GetStateUC
+    ThermostatController --> SetTargetTempUC
+    ThermostatController --> SetModeUC
+    ScheduleController --> CreateScheduleUC
+    HistoryController --> GetHistoryUC
+
+    %% Controllers → Presenters/DTOs
+    ThermostatController --> JSONPresenter
+    ThermostatController --> TemperatureDTO
+    ScheduleController --> ScheduleDTO
+
+    %% Use Cases → Interfaces
+    GetStateUC --> IStateRepo
+    GetStateUC --> ThermostatEntity
+
+    SetTargetTempUC --> IStateRepo
+    SetTargetTempUC --> IDeviceGateway
+    SetTargetTempUC --> IEventPublisher
+    SetTargetTempUC --> ThermostatEntity
+    SetTargetTempUC --> TemperatureChanged
+
+    SetModeUC --> IStateRepo
+    SetModeUC --> IDeviceGateway
+    SetModeUC --> IEventPublisher
+    SetModeUC --> ThermostatEntity
+    SetModeUC --> ModeChanged
+
+    CreateScheduleUC --> IScheduleRepo
+    CreateScheduleUC --> IEventPublisher
+    CreateScheduleUC --> ScheduleEntity
+    CreateScheduleUC --> ScheduleTriggered
+
+    GetHistoryUC --> IStateRepo
+    GetHistoryUC --> TemperatureReadingVO
+
+    ProcessTelemetryUC --> IStateRepo
+    ProcessTelemetryUC --> IEventPublisher
+    ProcessTelemetryUC --> TemperatureReadingVO
+    ProcessTelemetryUC --> ThermostatEntity
+    ProcessTelemetryUC --> TemperatureChanged
+
+    HandleScheduleTriggerUC --> IScheduleRepo
+    HandleScheduleTriggerUC --> IDeviceGateway
+    HandleScheduleTriggerUC --> ScheduleEntity
+
+    %% Interfaces → Implementations (реализация)
+    IStateRepo -.-> PostgresStateRepo
+    IScheduleRepo -.-> PostgresScheduleRepo
+    IDeviceGateway -.-> MQTTGatewayImpl
+    IEventPublisher -.-> KafkaPublisherImpl
+    IEventSubscriber -.-> KafkaSubscriberImpl
+
+    %% Implementations → Frameworks
+    PostgresStateRepo --> AsyncPG
+    PostgresScheduleRepo --> AsyncPG
+    MQTTGatewayImpl --> AioMQTT
+    KafkaPublisherImpl --> Aiokafka
+    KafkaSubscriberImpl --> Aiokafka
+
+    %% Frameworks → External
+    AsyncPG --> PG
+    AioMQTT --> MQTT
+    Aiokafka --> Kafka
+
+    %% Event Subscriber → Use Cases
+    KafkaSubscriberImpl --> ProcessTelemetryUC
+    KafkaSubscriberImpl --> HandleScheduleTriggerUC

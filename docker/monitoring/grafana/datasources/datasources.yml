@@ -1,0 +1,41 @@
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: true
+    jsonData:
+      timeInterval: 15s
+      queryTimeout: 60s
+      httpMethod: POST
+
+  - name: PostgreSQL
+    type: postgres
+    access: proxy
+    url: postgres:5432
+    database: postgres
+    user: postgres
+    secureJsonData:
+      password: postgres
+    jsonData:
+      sslmode: disable
+      postgresVersion: 1500
+      timescaledb: false
+      maxOpenConns: 10
+      maxIdleConns: 5
+      connMaxLifetime: 14400
+
+  - name: Valkey (Redis)
+    type: redis-datasource
+    access: proxy
+    url: valkey:6379
+    editable: true
+    jsonData:
+      client: valkey
+      poolSize: 5
+      timeout: 10
+      pingInterval: 0
+      pipelineWindow: 0

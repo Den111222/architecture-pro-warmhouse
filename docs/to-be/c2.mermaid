@@ -1,0 +1,99 @@
+graph TB
+    %% Стили
+    classDef person fill:#08427B,color:#fff
+    classDef container fill:#1168BD,color:#fff
+    classDef db fill:#7F8C8D,color:#fff
+    classDef queue fill:#F39C12,color:#fff
+    classDef external fill:#6C47B0,color:#fff
+
+    user[("Пользователь")]:::person
+
+    subgraph "Клиентские приложения"
+        web["Веб-приложение
+        React"]:::container
+        mobile["Мобильное приложение
+        Flutter"]:::container
+    end
+
+    subgraph "Шлюз"
+        gateway["API Gateway
+        :8080"]:::container
+    end
+
+    subgraph "Брокер сообщений"
+        kafka["Kafka
+        :9092"]:::queue
+    end
+
+    subgraph "Шлюз устройств"
+        mqtt["MQTT Gateway
+        :1883"]:::container
+    end
+
+    subgraph "Микросервисы"
+        users["User Service
+        :8086"]:::container
+        registry["Device Registry
+        :8081"]:::container
+        heating["Heating Control
+        :8082"]:::container
+        lighting["Lighting Control
+        :8083"]:::container
+        access["Access Control
+        :8084"]:::container
+        surveillance["Surveillance
+        :8085"]:::container
+        scenarios["Scenarios Engine
+        :8087"]:::container
+    end
+
+    subgraph "Базы данных"
+        users_db[(Users DB
+        PostgreSQL)]:::db
+        registry_db[(Registry DB
+        PostgreSQL)]:::db
+        heating_db[(Heating DB
+        PostgreSQL)]:::db
+        lighting_db[(Lighting DB
+        PostgreSQL)]:::db
+        access_db[(Access DB
+        PostgreSQL)]:::db
+        scenarios_db[(Scenarios DB
+        PostgreSQL)]:::db
+        S3[(S3
+        видеоархив)]:::db
+    end
+
+    devices["Умные устройства
+        датчики, лампы, замки"]:::external
+
+    user --> web
+    user --> mobile
+
+    web --> gateway
+    mobile --> gateway
+
+    gateway --> users
+    gateway --> registry
+    gateway --> heating
+    gateway --> lighting
+    gateway --> access
+    gateway --> surveillance
+    gateway --> scenarios
+
+    users --> users_db
+    registry --> registry_db
+    heating --> heating_db
+    lighting --> lighting_db
+    access --> access_db
+    scenarios --> scenarios_db
+    surveillance --> S3
+
+    devices --> mqtt
+    mqtt --> kafka
+
+    heating -.->|подписка/публикация| kafka
+    lighting -.->|подписка/публикация| kafka
+    access -.->|подписка/публикация| kafka
+    surveillance -.->|подписка/публикация| kafka
+    scenarios -.->|подписка/публикация| kafka

@@ -1,0 +1,199 @@
+asyncapi: 2.5.0
+info:
+  title: Heating Control Events
+  version: 1.0.0
+  description: События управления отоплением
+
+channels:
+  temperature.updated:
+    publish:
+      operationId: publishTemperatureUpdated
+      message:
+        $ref: '#/components/messages/TemperatureUpdated'
+
+  temperature.threshold.exceeded:
+    publish:
+      operationId: publishTemperatureThresholdExceeded
+      message:
+        $ref: '#/components/messages/TemperatureThresholdExceeded'
+
+  mode.changed:
+    publish:
+      operationId: publishModeChanged
+      message:
+        $ref: '#/components/messages/ModeChanged'
+
+  schedule.triggered:
+    publish:
+      operationId: publishScheduleTriggered
+      message:
+        $ref: '#/components/messages/ScheduleTriggered'
+
+  battery.low:
+    publish:
+      operationId: publishBatteryLow
+      message:
+        $ref: '#/components/messages/BatteryLow'
+
+components:
+  messages:
+    TemperatureUpdated:
+      name: TemperatureUpdated
+      title: Температура обновлена
+      payload:
+        type: object
+        required:
+          - eventId
+          - eventType
+          - deviceId
+          - temperature
+          - timestamp
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          eventType:
+            type: string
+            const: temperature.updated
+          deviceId:
+            type: string
+            format: uuid
+          temperature:
+            type: number
+            format: float
+          humidity:
+            type: integer
+          battery:
+            type: integer
+          timestamp:
+            type: string
+            format: date-time
+
+    TemperatureThresholdExceeded:
+      name: TemperatureThresholdExceeded
+      title: Превышение порога температуры
+      payload:
+        type: object
+        required:
+          - eventId
+          - eventType
+          - deviceId
+          - threshold
+          - currentTemp
+          - direction
+          - timestamp
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          eventType:
+            type: string
+            const: temperature.threshold.exceeded
+          deviceId:
+            type: string
+            format: uuid
+          threshold:
+            type: number
+            format: float
+          currentTemp:
+            type: number
+            format: float
+          direction:
+            type: string
+            enum: [above, below]
+          timestamp:
+            type: string
+            format: date-time
+
+    ModeChanged:
+      name: ModeChanged
+      title: Режим изменен
+      payload:
+        type: object
+        required:
+          - eventId
+          - eventType
+          - deviceId
+          - oldMode
+          - newMode
+          - timestamp
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          eventType:
+            type: string
+            const: mode.changed
+          deviceId:
+            type: string
+            format: uuid
+          oldMode:
+            type: string
+            enum: [heat, cool, auto, off]
+          newMode:
+            type: string
+            enum: [heat, cool, auto, off]
+          timestamp:
+            type: string
+            format: date-time
+
+    ScheduleTriggered:
+      name: ScheduleTriggered
+      title: Срабатывание по расписанию
+      payload:
+        type: object
+        required:
+          - eventId
+          - eventType
+          - scheduleId
+          - deviceId
+          - targetTemp
+          - timestamp
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          eventType:
+            type: string
+            const: schedule.triggered
+          scheduleId:
+            type: string
+            format: uuid
+          deviceId:
+            type: string
+            format: uuid
+          targetTemp:
+            type: number
+            format: float
+          timestamp:
+            type: string
+            format: date-time
+
+    BatteryLow:
+      name: BatteryLow
+      title: Низкий заряд батареи
+      payload:
+        type: object
+        required:
+          - eventId
+          - eventType
+          - deviceId
+          - batteryLevel
+          - timestamp
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          eventType:
+            type: string
+            const: battery.low
+          deviceId:
+            type: string
+            format: uuid
+          batteryLevel:
+            type: integer
+            minimum: 0
+            maximum: 100
+          timestamp:
+            type: string
+            format: date-time

@@ -1,0 +1,189 @@
+graph TB
+    %% Стили
+    classDef external fill:#6C47B0,color:#fff,stroke:#333
+    classDef framework fill:#E67E22,color:#fff,stroke:#333
+    classDef repo fill:#28B463,color:#fff,stroke:#333
+    classDef presenter fill:#9B59B6,color:#fff,stroke:#333
+    classDef service fill:#F39C12,color:#fff,stroke:#333
+    classDef domain fill:#7F8C8D,color:#fff,stroke:#333
+
+    subgraph "Слой 0: Внешние системы"
+        PG[(PostgreSQL)]:::external
+        Kafka[(Kafka)]:::external
+        Redis[(Redis)]:::external
+    end
+
+    subgraph "Слой 4: Фреймворки и реализации"
+        FastAPI["FastAPI Framework"]:::framework
+        AsyncPG["asyncpg"]:::framework
+        Aiokafka["aiokafka"]:::framework
+        RedisClient["redis-py"]:::framework
+        APScheduler["apscheduler"]:::framework
+
+        PostgresScenarioRepo["PostgresScenarioRepository
+        (реализация ScenarioRepository)"]:::framework
+        PostgresExecutionRepo["PostgresExecutionRepository
+        (реализация ExecutionRepository)"]:::framework
+
+        KafkaPublisherImpl["KafkaEventPublisher"]:::framework
+        KafkaSubscriberImpl["KafkaEventSubscriber"]:::framework
+        SchedulerImpl["APSchedulerAdapter"]:::framework
+
+        DIContainer["DI Container"]:::framework
+    end
+
+    subgraph "Слой 3A: Интерфейсы"
+        IScenarioRepo["<<interface>>
+        ScenarioRepository"]:::repo
+
+        IExecutionRepo["<<interface>>
+        ExecutionRepository"]:::repo
+
+        IEventPublisher["<<interface>>
+        EventPublisher"]:::repo
+
+        IEventSubscriber["<<interface>>
+        EventSubscriber"]:::repo
+
+        IScheduler["<<interface>>
+        Scheduler"]:::repo
+    end
+
+    subgraph "Слой 3B: Representation"
+        ScenarioRouter["ScenarioRouter
+        (/scenarios/*)"]:::presenter
+        ControlRouter["ControlRouter
+        (/control/*)"]:::presenter
+        ExecutionRouter["ExecutionRouter
+        (/executions/*)"]:::presenter
+
+        ScenarioController["ScenarioController"]:::presenter
+        ControlController["ControlController"]:::presenter
+        ExecutionController["ExecutionController"]:::presenter
+
+        GetCurrentUserDep["get_current_user()"]:::presenter
+        CheckHomeAccessDep["check_home_access()"]:::presenter
+
+        JSONPresenter["JSONPresenter"]:::presenter
+        ScenarioDTO["ScenarioDTO"]:::presenter
+        ExecutionDTO["ExecutionDTO"]:::presenter
+    end
+
+    subgraph "Слой 2: Use Cases"
+        CreateScenarioUC["CreateScenarioUseCase"]:::service
+        GetScenarioUC["GetScenarioUseCase"]:::service
+        UpdateScenarioUC["UpdateScenarioUseCase"]:::service
+        DeleteScenarioUC["DeleteScenarioUseCase"]:::service
+        EnableScenarioUC["EnableScenarioUseCase"]:::service
+        DisableScenarioUC["DisableScenarioUseCase"]:::service
+        EvaluateTriggersUC["EvaluateTriggersUseCase"]:::service
+        ExecuteScenarioUC["ExecuteScenarioUseCase"]:::service
+        GetExecutionsUC["GetExecutionsUseCase"]:::service
+    end
+
+    subgraph "Слой 1: Domain"
+        ScenarioEntity["Scenario Entity"]:::domain
+        ExecutionEntity["Execution Entity"]:::domain
+
+        TriggerVO["Trigger Value Object"]:::domain
+        ConditionVO["Condition Value Object"]:::domain
+        ActionVO["Action Value Object"]:::domain
+
+        ScenarioTriggered["ScenarioTriggered Event"]:::domain
+        ScenarioExecuted["ScenarioExecuted Event"]:::domain
+    end
+
+    %% Связи
+    DIContainer --> PostgresScenarioRepo
+    DIContainer --> PostgresExecutionRepo
+    DIContainer --> KafkaPublisherImpl
+    DIContainer --> KafkaSubscriberImpl
+    DIContainer --> SchedulerImpl
+
+    FastAPI --> ScenarioRouter
+    FastAPI --> ControlRouter
+    FastAPI --> ExecutionRouter
+
+    ScenarioRouter --> ScenarioController
+    ControlRouter --> ControlController
+    ExecutionRouter --> ExecutionController
+
+    ScenarioController --> GetCurrentUserDep
+    ScenarioController --> CheckHomeAccessDep
+    ControlController --> CheckHomeAccessDep
+
+    ScenarioController --> CreateScenarioUC
+    ScenarioController --> GetScenarioUC
+    ScenarioController --> UpdateScenarioUC
+    ScenarioController --> DeleteScenarioUC
+    ControlController --> EnableScenarioUC
+    ControlController --> DisableScenarioUC
+    ControlController --> ExecuteScenarioUC
+    ExecutionController --> GetExecutionsUC
+
+    ScenarioController --> JSONPresenter
+    ScenarioController --> ScenarioDTO
+    ExecutionController --> ExecutionDTO
+
+    CreateScenarioUC --> IScenarioRepo
+    CreateScenarioUC --> IEventPublisher
+    CreateScenarioUC --> IScheduler
+    CreateScenarioUC --> ScenarioEntity
+    CreateScenarioUC --> TriggerVO
+    CreateScenarioUC --> ConditionVO
+    CreateScenarioUC --> ActionVO
+    CreateScenarioUC --> ScenarioTriggered
+
+    GetScenarioUC --> IScenarioRepo
+    GetScenarioUC --> ScenarioEntity
+
+    UpdateScenarioUC --> IScenarioRepo
+    UpdateScenarioUC --> ScenarioEntity
+    UpdateScenarioUC --> IScheduler
+
+    DeleteScenarioUC --> IScenarioRepo
+    DeleteScenarioUC --> IScheduler
+
+    EnableScenarioUC --> IScenarioRepo
+    EnableScenarioUC --> IScheduler
+    EnableScenarioUC --> ScenarioEntity
+
+    DisableScenarioUC --> IScenarioRepo
+    DisableScenarioUC --> IScheduler
+    DisableScenarioUC --> ScenarioEntity
+
+    EvaluateTriggersUC --> IScenarioRepo
+    EvaluateTriggersUC --> ScenarioEntity
+    EvaluateTriggersUC --> TriggerVO
+
+    ExecuteScenarioUC --> IScenarioRepo
+    ExecuteScenarioUC --> IEventPublisher
+    ExecuteScenarioUC --> IExecutionRepo
+    ExecuteScenarioUC --> ScenarioEntity
+    ExecuteScenarioUC --> ExecutionEntity
+    ExecuteScenarioUC --> ConditionVO
+    ExecuteScenarioUC --> ActionVO
+    ExecuteScenarioUC --> ScenarioExecuted
+
+    GetExecutionsUC --> IExecutionRepo
+    GetExecutionsUC --> ExecutionEntity
+
+    IScenarioRepo -.-> PostgresScenarioRepo
+    IExecutionRepo -.-> PostgresExecutionRepo
+    IEventPublisher -.-> KafkaPublisherImpl
+    IEventSubscriber -.-> KafkaSubscriberImpl
+    IScheduler -.-> SchedulerImpl
+
+    PostgresScenarioRepo --> AsyncPG
+    PostgresExecutionRepo --> AsyncPG
+    AsyncPG --> PG
+
+    SchedulerImpl --> APScheduler
+    APScheduler --> RedisClient
+    RedisClient --> Redis
+
+    KafkaPublisherImpl --> Aiokafka
+    KafkaSubscriberImpl --> Aiokafka
+    Aiokafka --> Kafka
+
+    KafkaSubscriberImpl --> EvaluateTriggersUC

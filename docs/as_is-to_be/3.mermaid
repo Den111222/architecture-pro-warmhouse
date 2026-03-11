@@ -1,0 +1,23 @@
+graph TB
+    subgraph "ЭТАП 3"
+        Gateway["API Gateway"]
+
+        Monolith["Монолит
+        (без устройств)"]
+
+        UserService["User Service"]
+        DeviceService["Device Registry
+        Python/FastAPI
+        порт 8081"]
+
+        DeviceDB[(Devices DB
+        PostgreSQL)]
+    end
+
+    Client --> Gateway
+    Gateway --> UserService
+    Gateway --> DeviceService
+    Gateway --> Monolith
+
+    DeviceService --> DeviceDB
+    DeviceService --> Kafka

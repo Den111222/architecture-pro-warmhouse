@@ -1,0 +1,21 @@
+graph TB
+    subgraph "ЭТАП 2"
+        Gateway["API Gateway"]
+
+        Monolith["Монолит
+        (без авторизации)"]
+
+        UserService["User Service
+        Python/FastAPI
+        порт 8086"]
+
+        UserDB[(Users DB
+        PostgreSQL)]
+    end
+
+    Client["Клиент"] --> Gateway
+    Gateway --> UserService
+    Gateway --> Monolith
+
+    UserService --> UserDB
+    Monolith --> UserDB

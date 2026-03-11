@@ -1,0 +1,437 @@
+asyncapi: 2.5.0
+info:
+  title: Access Control Events
+  version: 1.0.0
+  description: События управления доступом
+servers:
+  production:
+    url: kafka.teplydom.ru:9092
+    protocol: kafka
+    description: Kafka cluster
+
+channels:
+  device.locked:
+    publish:
+      operationId: publishDeviceLocked
+      message:
+        $ref: '#/components/messages/DeviceLocked'
+    subscribe:
+      operationId: onDeviceLocked
+      message:
+        $ref: '#/components/messages/DeviceLocked'
+
+  device.unlocked:
+    publish:
+      operationId: publishDeviceUnlocked
+      message:
+        $ref: '#/components/messages/DeviceUnlocked'
+
+  gate.opened:
+    publish:
+      operationId: publishGateOpened
+      message:
+        $ref: '#/components/messages/GateOpened'
+
+  gate.closed:
+    publish:
+      operationId: publishGateClosed
+      message:
+        $ref: '#/components/messages/GateClosed'
+
+  permission.granted:
+    publish:
+      operationId: publishPermissionGranted
+      message:
+        $ref: '#/components/messages/PermissionGranted'
+
+  permission.revoked:
+    publish:
+      operationId: publishPermissionRevoked
+      message:
+        $ref: '#/components/messages/PermissionRevoked'
+
+  temporary.code.created:
+    publish:
+      operationId: publishTemporaryCodeCreated
+      message:
+        $ref: '#/components/messages/TemporaryCodeCreated'
+
+  temporary.code.used:
+    publish:
+      operationId: publishTemporaryCodeUsed
+      message:
+        $ref: '#/components/messages/TemporaryCodeUsed'
+
+  temporary.code.expired:
+    publish:
+      operationId: publishTemporaryCodeExpired
+      message:
+        $ref: '#/components/messages/TemporaryCodeExpired'
+
+  access.denied:
+    publish:
+      operationId: publishAccessDenied
+      message:
+        $ref: '#/components/messages/AccessDenied'
+
+components:
+  messages:
+    DeviceLocked:
+      name: DeviceLocked
+      title: Устройство заблокировано
+      contentType: application/json
+      payload:
+        type: object
+        required:
+          - eventId
+          - eventType
+          - deviceId
+          - userId
+          - timestamp
+        properties:
+          eventId:
+            type: string
+            format: uuid
+            description: Уникальный идентификатор события
+          eventType:
+            type: string
+            const: device.locked
+          deviceId:
+            type: string
+            format: uuid
+          userId:
+            type: string
+            format: uuid
+          method:
+            type: string
+            enum: [app, keypad, schedule, temporary, automation]
+          timestamp:
+            type: string
+            format: date-time
+          metadata:
+            type: object
+            properties:
+              source:
+                type: string
+                enum: [manual, auto_lock, schedule]
+
+    DeviceUnlocked:
+      name: DeviceUnlocked
+      title: Устройство разблокировано
+      payload:
+        type: object
+        required:
+          - eventId
+          - eventType
+          - deviceId
+          - userId
+          - timestamp
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          eventType:
+            type: string
+            const: device.unlocked
+          deviceId:
+            type: string
+            format: uuid
+          userId:
+            type: string
+            format: uuid
+          method:
+            type: string
+            enum: [app, keypad, schedule, temporary, fingerprint, face]
+          timestamp:
+            type: string
+            format: date-time
+
+    GateOpened:
+      name: GateOpened
+      title: Ворота открыты
+      payload:
+        type: object
+        required:
+          - eventId
+          - eventType
+          - deviceId
+          - userId
+          - timestamp
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          eventType:
+            type: string
+            const: gate.opened
+          deviceId:
+            type: string
+            format: uuid
+          userId:
+            type: string
+            format: uuid
+          method:
+            type: string
+            enum: [app, remote, sensor, schedule]
+          timestamp:
+            type: string
+            format: date-time
+
+    GateClosed:
+      name: GateClosed
+      title: Ворота закрыты
+      payload:
+        type: object
+        required:
+          - eventId
+          - eventType
+          - deviceId
+          - userId
+          - timestamp
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          eventType:
+            type: string
+            const: gate.closed
+          deviceId:
+            type: string
+            format: uuid
+          userId:
+            type: string
+            format: uuid
+          method:
+            type: string
+            enum: [app, remote, timer, sensor]
+          timestamp:
+            type: string
+            format: date-time
+
+    PermissionGranted:
+      name: PermissionGranted
+      title: Права доступа предоставлены
+      payload:
+        type: object
+        required:
+          - eventId
+          - eventType
+          - permissionId
+          - userId
+          - deviceId
+          - grantedBy
+          - timestamp
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          eventType:
+            type: string
+            const: permission.granted
+          permissionId:
+            type: string
+            format: uuid
+          userId:
+            type: string
+            format: uuid
+          deviceId:
+            type: string
+            format: uuid
+          actions:
+            type: array
+            items:
+              type: string
+              enum: [lock, unlock, open, close, view]
+          grantedBy:
+            type: string
+            format: uuid
+          validFrom:
+            type: string
+            format: date-time
+          validTo:
+            type: string
+            format: date-time
+          timestamp:
+            type: string
+            format: date-time
+
+    PermissionRevoked:
+      name: PermissionRevoked
+      title: Права доступа отозваны
+      payload:
+        type: object
+        required:
+          - eventId
+          - eventType
+          - permissionId
+          - userId
+          - deviceId
+          - revokedBy
+          - timestamp
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          eventType:
+            type: string
+            const: permission.revoked
+          permissionId:
+            type: string
+            format: uuid
+          userId:
+            type: string
+            format: uuid
+          deviceId:
+            type: string
+            format: uuid
+          revokedBy:
+            type: string
+            format: uuid
+          reason:
+            type: string
+            enum: [expired, manual, user_left]
+          timestamp:
+            type: string
+            format: date-time
+
+    TemporaryCodeCreated:
+      name: TemporaryCodeCreated
+      title: Временный код создан
+      payload:
+        type: object
+        required:
+          - eventId
+          - eventType
+          - codeId
+          - deviceId
+          - createdBy
+          - validFrom
+          - validTo
+          - timestamp
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          eventType:
+            type: string
+            const: temporary.code.created
+          codeId:
+            type: string
+            format: uuid
+          deviceId:
+            type: string
+            format: uuid
+          phone:
+            type: string
+          createdBy:
+            type: string
+            format: uuid
+          validFrom:
+            type: string
+            format: date-time
+          validTo:
+            type: string
+            format: date-time
+          maxUses:
+            type: integer
+          timestamp:
+            type: string
+            format: date-time
+
+    TemporaryCodeUsed:
+      name: TemporaryCodeUsed
+      title: Временный код использован
+      payload:
+        type: object
+        required:
+          - eventId
+          - eventType
+          - codeId
+          - deviceId
+          - timestamp
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          eventType:
+            type: string
+            const: temporary.code.used
+          codeId:
+            type: string
+            format: uuid
+          deviceId:
+            type: string
+            format: uuid
+          usedBy:
+            type: string
+          remainingUses:
+            type: integer
+          timestamp:
+            type: string
+            format: date-time
+
+    TemporaryCodeExpired:
+      name: TemporaryCodeExpired
+      title: Временный код истек
+      payload:
+        type: object
+        required:
+          - eventId
+          - eventType
+          - codeId
+          - deviceId
+          - timestamp
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          eventType:
+            type: string
+            const: temporary.code.expired
+          codeId:
+            type: string
+            format: uuid
+          deviceId:
+            type: string
+            format: uuid
+          reason:
+            type: string
+            enum: [time_expired, max_uses_reached]
+          timestamp:
+            type: string
+            format: date-time
+
+    AccessDenied:
+      name: AccessDenied
+      title: Доступ запрещен
+      payload:
+        type: object
+        required:
+          - eventId
+          - eventType
+          - deviceId
+          - userId
+          - reason
+          - timestamp
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          eventType:
+            type: string
+            const: access.denied
+          deviceId:
+            type: string
+            format: uuid
+          userId:
+            type: string
+            format: uuid
+          reason:
+            type: string
+            enum: [no_permission, expired, wrong_code, too_many_attempts, device_locked]
+          attemptMethod:
+            type: string
+            enum: [app, keypad, code]
+          timestamp:
+            type: string
+            format: date-time

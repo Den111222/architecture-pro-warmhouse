@@ -1,0 +1,271 @@
+// Smart Home Database Schema
+// ER-диаграмма для микросервисной архитектуры
+
+Table users {
+  id uuid [primary key]
+  email varchar(255) [unique, not null]
+  password_hash varchar(255) [not null]
+  full_name varchar(255)
+  phone varchar(20)
+  email_verified boolean [default: false]
+  created_at timestamp [default: `now()`]
+  last_login timestamp
+  status varchar(50) [default: 'active']
+
+  indexes {
+    (email) [unique]
+    (status)
+  }
+}
+
+Table homes {
+  id uuid [primary key]
+  name varchar(255) [not null]
+  address text
+  timezone varchar(50) [default: 'Europe/Moscow']
+  owner_id uuid [not null]
+  created_at timestamp [default: `now()`]
+
+  indexes {
+    (owner_id)
+  }
+}
+
+Table home_users {
+  user_id uuid
+  home_id uuid
+  role_id uuid
+  status varchar(50) [default: 'active']
+  joined_at timestamp [default: `now()`]
+
+  primary key (user_id, home_id)
+
+  indexes {
+    (home_id)
+    (role_id)
+  }
+}
+
+Table invites {
+  id uuid [primary key]
+  email varchar(255) [not null]
+  home_id uuid [not null]
+  invited_by uuid [not null]
+  role varchar(50) [not null]
+  status varchar(50) [default: 'pending']
+  created_at timestamp [default: `now()`]
+  expires_at timestamp
+
+  indexes {
+    (email)
+    (home_id)
+    (status)
+  }
+}
+
+Table roles {
+  id uuid [primary key]
+  name varchar(100) [not null]
+  description text
+  home_id uuid [not null]
+  is_default boolean [default: false]
+  created_at timestamp [default: `now()`]
+
+  indexes {
+    (home_id)
+    (name, home_id) [unique]
+  }
+}
+
+Table device_models {
+  id uuid [primary key]
+  vendor varchar(100) [not null]
+  model varchar(100) [not null]
+  type varchar(50) [not null]
+  protocol varchar(50) [not null]
+  capabilities jsonb
+
+  indexes {
+    (vendor, model) [unique]
+    (type)
+  }
+}
+
+Table devices {
+  id uuid [primary key]
+  home_id uuid [not null]
+  model_id uuid [not null]
+  name varchar(255)
+  serial_number varchar(100) [unique, not null]
+  auth_token varchar(255) [not null]
+  status varchar(50) [default: 'active']
+  last_seen_at timestamp
+  settings jsonb
+  created_at timestamp [default: `now()`]
+
+  indexes {
+    (home_id)
+    (model_id)
+    (serial_number) [unique]
+    (status)
+    (last_seen_at)
+  }
+}
+
+Table role_permissions {
+  role_id uuid
+  device_id uuid
+  permissions jsonb [not null]
+
+  primary key (role_id, device_id)
+
+  indexes {
+    (device_id)
+  }
+}
+
+Table permissions {
+  id uuid [primary key]
+  user_id uuid [not null]
+  device_id uuid [not null]
+  permissions jsonb [not null]
+  valid_from timestamp
+  valid_to timestamp
+  created_at timestamp [default: `now()`]
+
+  indexes {
+    (user_id)
+    (device_id)
+    (valid_from, valid_to)
+  }
+}
+
+Table temperature_readings {
+  id uuid [primary key]
+  device_id uuid [not null]
+  temperature float [not null]
+  humidity float
+  battery integer
+  timestamp timestamp [default: `now()`]
+
+  indexes {
+    (device_id)
+    (timestamp)
+  }
+}
+
+Table heating_schedules {
+  id uuid [primary key]
+  device_id uuid [not null]
+  name varchar(255)
+  days_of_week jsonb [not null]
+  time time [not null]
+  target_temp float [not null]
+  enabled boolean [default: true]
+  created_at timestamp [default: `now()`]
+
+  indexes {
+    (device_id)
+    (enabled)
+  }
+}
+
+Table lighting_scenes {
+  id uuid [primary key]
+  home_id uuid [not null]
+  name varchar(255) [not null]
+  actions jsonb [not null]
+  created_at timestamp [default: `now()`]
+
+  indexes {
+    (home_id)
+  }
+}
+
+Table scenarios {
+  id uuid [primary key]
+  home_id uuid [not null]
+  name varchar(255) [not null]
+  description text
+  trigger jsonb [not null]
+  conditions jsonb
+  actions jsonb [not null]
+  enabled boolean [default: true]
+  created_at timestamp [default: `now()`]
+  updated_at timestamp
+
+  indexes {
+    (home_id)
+    (enabled)
+  }
+}
+
+Table audit_log {
+  id uuid [primary key]
+  user_id uuid
+  device_id uuid
+  action varchar(100) [not null]
+  result varchar(50)
+  details jsonb
+  ip_address varchar(45)
+  timestamp timestamp [default: `now()`]
+
+  indexes {
+    (user_id)
+    (device_id)
+    (timestamp)
+    (action)
+  }
+}
+
+Table subscriptions {
+  id uuid [primary key]
+  user_id uuid [unique, not null]
+  plan_id varchar(50) [not null]
+  status varchar(50) [default: 'active']
+  start_date timestamp [not null]
+  end_date timestamp
+  auto_renew boolean [default: true]
+  payment_method jsonb
+
+  indexes {
+    (user_id) [unique]
+    (status)
+    (end_date)
+  }
+}
+
+// Relationships
+
+Ref: homes.owner_id > users.id
+
+Ref: home_users.user_id > users.id
+Ref: home_users.home_id > homes.id
+Ref: home_users.role_id > roles.id
+
+Ref: invites.home_id > homes.id
+Ref: invites.invited_by > users.id
+
+Ref: roles.home_id > homes.id
+
+Ref: devices.home_id > homes.id
+Ref: devices.model_id > device_models.id
+
+Ref: role_permissions.role_id > roles.id
+Ref: role_permissions.device_id > devices.id
+
+Ref: permissions.user_id > users.id
+Ref: permissions.device_id > devices.id
+
+Ref: temperature_readings.device_id > devices.id
+
+Ref: heating_schedules.device_id > devices.id
+
+Ref: lighting_scenes.home_id > homes.id
+
+Ref: scenarios.home_id > homes.id
+
+Ref: audit_log.user_id > users.id
+Ref: audit_log.device_id > devices.id
+
+Ref: subscriptions.user_id > users.id

@@ -1,0 +1,1070 @@
+openapi: 3.0.0
+info:
+  title: User Service API
+  description: Управление пользователями, аутентификация, приглашения, роли
+  version: 1.0.0
+  contact:
+    name: Тёплый дом
+    email: support@teplydom.ru
+servers:
+  - url: http://localhost:8086/api/v1
+    description: Local development
+  - url: https://api.teplydom.ru/users/v1
+    description: Production
+
+tags:
+  - name: Authentication
+    description: Регистрация, вход, выход
+    x-layer: presenter
+  - name: Users
+    description: Управление профилем
+    x-layer: presenter
+  - name: Invites
+    description: Приглашения в дом
+    x-layer: presenter
+  - name: Roles
+    description: Управление ролями и правами
+    x-layer: presenter
+  - name: Subscriptions
+    description: Управление подписками
+    x-layer: presenter
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT токен из /auth/login
+
+  schemas:
+    # ========== DOMAIN ENTITIES ==========
+    User:
+      type: object
+      description: Пользователь системы
+      x-layer: domain
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "123e4567-e89b-12d3-a456-426614174000"
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+        fullName:
+          type: string
+          example: "Иван Петров"
+        phone:
+          type: string
+          example: "+79991234567"
+        status:
+          type: string
+          enum: [pending, active, suspended, deleted]
+          example: "active"
+        emailVerified:
+          type: boolean
+          example: true
+        createdAt:
+          type: string
+          format: date-time
+        lastLogin:
+          type: string
+          format: date-time
+        avatar:
+          type: string
+          format: uri
+          example: "https://storage.teplydom.ru/avatars/123.jpg"
+
+    Invite:
+      type: object
+      description: Приглашение в дом
+      x-layer: domain
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        homeId:
+          type: string
+          format: uuid
+        homeName:
+          type: string
+        invitedBy:
+          type: string
+          format: uuid
+        invitedByName:
+          type: string
+        role:
+          type: string
+          enum: [admin, member, guest]
+        status:
+          type: string
+          enum: [pending, accepted, declined, expired, cancelled]
+        createdAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+
+    Role:
+      type: object
+      description: Роль в доме
+      x-layer: domain
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          example: "Родители"
+        description:
+          type: string
+        homeId:
+          type: string
+          format: uuid
+        permissions:
+          type: array
+          items:
+            type: string
+            enum: [view, control, manage, admin]
+          example: ["view", "control"]
+        isDefault:
+          type: boolean
+        userCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+
+    Subscription:
+      type: object
+      description: Подписка пользователя
+      x-layer: domain
+      properties:
+        id:
+          type: string
+          format: uuid
+        planId:
+          type: string
+          enum: [free, basic, premium, business]
+        status:
+          type: string
+          enum: [active, past_due, canceled, expired]
+        startDate:
+          type: string
+          format: date-time
+        endDate:
+          type: string
+          format: date-time
+        autoRenew:
+          type: boolean
+        features:
+          type: object
+          properties:
+            maxDevices:
+              type: integer
+            maxCameras:
+              type: integer
+            recordingDays:
+              type: integer
+
+    # ========== DTOs ==========
+    UserProfileResponse:
+      type: object
+      description: Профиль пользователя (ответ)
+      x-layer: presenter
+      allOf:
+        - $ref: '#/components/schemas/User'
+        - type: object
+          properties:
+            homes:
+              type: array
+              items:
+                type: object
+                properties:
+                  homeId:
+                    type: string
+                    format: uuid
+                  homeName:
+                    type: string
+                  role:
+                    type: string
+                  joinedAt:
+                    type: string
+                    format: date-time
+
+    LoginRequest:
+      type: object
+      description: Запрос на вход
+      x-layer: presenter
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+        password:
+          type: string
+          format: password
+          example: "securePassword123"
+
+    LoginResponse:
+      type: object
+      description: Ответ с токенами
+      x-layer: presenter
+      properties:
+        accessToken:
+          type: string
+          example: "eyJhbGciOiJIUzI1NiIs..."
+        refreshToken:
+          type: string
+          example: "eyJhbGciOiJIUzI1NiIs..."
+        expiresIn:
+          type: integer
+          example: 3600
+        user:
+          $ref: '#/components/schemas/User'
+
+    RegisterRequest:
+      type: object
+      description: Запрос на регистрацию
+      x-layer: presenter
+      required:
+        - email
+        - password
+        - fullName
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+        fullName:
+          type: string
+        phone:
+          type: string
+        inviteToken:
+          type: string
+          description: Токен приглашения (если есть)
+
+    CreateInviteRequest:
+      type: object
+      description: Создание приглашения
+      x-layer: presenter
+      required:
+        - email
+        - homeId
+        - role
+      properties:
+        email:
+          type: string
+          format: email
+        homeId:
+          type: string
+          format: uuid
+        role:
+          type: string
+          enum: [admin, member, guest]
+        message:
+          type: string
+          maxLength: 500
+
+    CreateRoleRequest:
+      type: object
+      description: Создание роли
+      x-layer: presenter
+      required:
+        - name
+        - homeId
+        - permissions
+      properties:
+        name:
+          type: string
+          minLength: 2
+          maxLength: 50
+        description:
+          type: string
+          maxLength: 200
+        homeId:
+          type: string
+          format: uuid
+        permissions:
+          type: array
+          items:
+            type: string
+            enum: [view, control, manage, admin]
+
+    ErrorResponse:
+      type: object
+      description: Ошибка
+      x-layer: presenter
+      properties:
+        error:
+          type: string
+          example: "Validation error"
+        details:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              message:
+                type: string
+
+paths:
+  # ========== AUTHENTICATION ==========
+  /auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: Регистрация нового пользователя
+      description: Создает нового пользователя, отправляет email для подтверждения
+      operationId: registerUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Пользователь создан
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: Ошибка валидации (email уже существует, слабый пароль)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Email уже зарегистрирован
+
+  /auth/confirm-email:
+    post:
+      tags:
+        - Authentication
+      summary: Подтверждение email
+      description: Подтверждает email по токену из письма
+      operationId: confirmEmail
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - token
+              properties:
+                token:
+                  type: string
+                  description: Токен из письма подтверждения
+      responses:
+        '200':
+          description: Email подтвержден
+        '400':
+          description: Неверный или истекший токен
+
+  /auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Вход в систему
+      description: Аутентификация пользователя, получение JWT токена
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Успешный вход
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Неверный email или пароль
+        '403':
+          description: Email не подтвержден
+
+  /auth/refresh:
+    post:
+      tags:
+        - Authentication
+      summary: Обновление токена
+      description: Получение нового access token по refresh token
+      operationId: refreshToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - refreshToken
+              properties:
+                refreshToken:
+                  type: string
+      responses:
+        '200':
+          description: Новый токен
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken:
+                    type: string
+                  expiresIn:
+                    type: integer
+        '401':
+          description: Неверный refresh token
+
+  /auth/logout:
+    post:
+      tags:
+        - Authentication
+      summary: Выход из системы
+      description: Инвалидация refresh token
+      security:
+        - bearerAuth: []
+      operationId: logout
+      responses:
+        '204':
+          description: Успешный выход
+
+  /auth/reset-password/request:
+    post:
+      tags:
+        - Authentication
+      summary: Запрос сброса пароля
+      description: Отправляет email со ссылкой для сброса пароля
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        '202':
+          description: Запрос принят (email отправлен)
+        '404':
+          description: Пользователь не найден (но ответ 202 для безопасности)
+
+  /auth/reset-password/confirm:
+    post:
+      tags:
+        - Authentication
+      summary: Подтверждение сброса пароля
+      description: Устанавливает новый пароль по токену
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - token
+                - newPassword
+              properties:
+                token:
+                  type: string
+                newPassword:
+                  type: string
+                  minLength: 8
+      responses:
+        '200':
+          description: Пароль изменен
+        '400':
+          description: Неверный или истекший токен
+
+  # ========== USERS ==========
+  /users/me:
+    get:
+      tags:
+        - Users
+      summary: Получить профиль текущего пользователя
+      description: Возвращает информацию о текущем пользователе
+      security:
+        - bearerAuth: []
+      operationId: getCurrentUser
+      responses:
+        '200':
+          description: Профиль пользователя
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfileResponse'
+        '401':
+          description: Не авторизован
+
+    patch:
+      tags:
+        - Users
+      summary: Обновить профиль
+      description: Обновляет данные текущего пользователя
+      security:
+        - bearerAuth: []
+      operationId: updateCurrentUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fullName:
+                  type: string
+                phone:
+                  type: string
+                avatar:
+                  type: string
+                  format: uri
+      responses:
+        '200':
+          description: Профиль обновлен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          description: Не авторизован
+
+  /users/me/password:
+    put:
+      tags:
+        - Users
+      summary: Изменить пароль
+      description: Изменяет пароль текущего пользователя
+      security:
+        - bearerAuth: []
+      operationId: changePassword
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - currentPassword
+                - newPassword
+              properties:
+                currentPassword:
+                  type: string
+                newPassword:
+                  type: string
+                  minLength: 8
+      responses:
+        '204':
+          description: Пароль изменен
+        '400':
+          description: Неверный текущий пароль
+        '401':
+          description: Не авторизован
+
+  /users/delete-me:
+    delete:
+      tags:
+        - Users
+      summary: Удалить аккаунт
+      description: Запрашивает удаление аккаунта (soft delete)
+      security:
+        - bearerAuth: []
+      operationId: deleteCurrentUser
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+      responses:
+        '202':
+          description: Запрос на удаление принят
+
+  # ========== INVITES ==========
+  /invites:
+    post:
+      tags:
+        - Invites
+      summary: Создать приглашение
+      description: Отправляет приглашение пользователю в дом
+      security:
+        - bearerAuth: []
+      operationId: createInvite
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateInviteRequest'
+      responses:
+        '201':
+          description: Приглашение создано
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invite'
+        '400':
+          description: Ошибка валидации
+        '403':
+          description: Недостаточно прав
+
+  /invites/received:
+    get:
+      tags:
+        - Invites
+      summary: Получить полученные приглашения
+      description: Возвращает список приглашений для текущего пользователя
+      security:
+        - bearerAuth: []
+      operationId: getReceivedInvites
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, accepted, declined, expired]
+      responses:
+        '200':
+          description: Список приглашений
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Invite'
+
+  /invites/{inviteId}:
+    get:
+      tags:
+        - Invites
+      summary: Получить приглашение
+      description: Возвращает информацию о приглашении
+      security:
+        - bearerAuth: []
+      operationId: getInvite
+      parameters:
+        - name: inviteId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Информация о приглашении
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Invite'
+        '404':
+          description: Приглашение не найдено
+
+  /invites/{inviteId}/accept:
+    post:
+      tags:
+        - Invites
+      summary: Принять приглашение
+      description: Принимает приглашение в дом
+      security:
+        - bearerAuth: []
+      operationId: acceptInvite
+      parameters:
+        - name: inviteId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Приглашение принято
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  homeId:
+                    type: string
+                    format: uuid
+                  role:
+                    type: string
+        '400':
+          description: Приглашение истекло или уже обработано
+
+  /invites/{inviteId}/decline:
+    post:
+      tags:
+        - Invites
+      summary: Отклонить приглашение
+      description: Отклоняет приглашение в дом
+      security:
+        - bearerAuth: []
+      operationId: declineInvite
+      parameters:
+        - name: inviteId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+      responses:
+        '200':
+          description: Приглашение отклонено
+
+  # ========== ROLES ==========
+  /roles:
+    post:
+      tags:
+        - Roles
+      summary: Создать роль
+      description: Создает новую роль в доме
+      security:
+        - bearerAuth: []
+      operationId: createRole
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRoleRequest'
+      responses:
+        '201':
+          description: Роль создана
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Role'
+        '403':
+          description: Недостаточно прав
+
+    get:
+      tags:
+        - Roles
+      summary: Получить роли дома
+      description: Возвращает список ролей в доме
+      security:
+        - bearerAuth: []
+      operationId: getRoles
+      parameters:
+        - name: homeId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Список ролей
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Role'
+
+  /roles/{roleId}:
+    get:
+      tags:
+        - Roles
+      summary: Получить роль
+      description: Возвращает информацию о роли
+      security:
+        - bearerAuth: []
+      operationId: getRole
+      parameters:
+        - name: roleId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Информация о роли
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Role'
+
+    put:
+      tags:
+        - Roles
+      summary: Обновить роль
+      description: Обновляет данные роли
+      security:
+        - bearerAuth: []
+      operationId: updateRole
+      parameters:
+        - name: roleId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                permissions:
+                  type: array
+                  items:
+                    type: string
+                    enum: [view, control, manage, admin]
+      responses:
+        '200':
+          description: Роль обновлена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Role'
+
+    delete:
+      tags:
+        - Roles
+      summary: Удалить роль
+      description: Удаляет роль (только если нет пользователей)
+      security:
+        - bearerAuth: []
+      operationId: deleteRole
+      parameters:
+        - name: roleId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Роль удалена
+        '400':
+          description: Роль используется или является дефолтной
+
+  /roles/{roleId}/permissions:
+    post:
+      tags:
+        - Roles
+      summary: Назначить права для роли
+      description: Устанавливает права доступа для роли
+      security:
+        - bearerAuth: []
+      operationId: setRolePermissions
+      parameters:
+        - name: roleId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - permissions
+              properties:
+                permissions:
+                  type: array
+                  items:
+                    type: string
+                    enum: [view, control, manage, admin]
+      responses:
+        '200':
+          description: Права назначены
+
+  /users/{userId}/roles:
+    post:
+      tags:
+        - Roles
+      summary: Назначить роль пользователю
+      description: Назначает роль пользователю в доме
+      security:
+        - bearerAuth: []
+      operationId: assignRoleToUser
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - roleId
+                - homeId
+              properties:
+                roleId:
+                  type: string
+                  format: uuid
+                homeId:
+                  type: string
+                  format: uuid
+      responses:
+        '200':
+          description: Роль назначена
+
+    get:
+      tags:
+        - Roles
+      summary: Получить роли пользователя
+      description: Возвращает роли пользователя в доме
+      security:
+        - bearerAuth: []
+      operationId: getUserRoles
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: homeId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Список ролей
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Role'
+
+  # ========== SUBSCRIPTIONS ==========
+  /subscriptions/current:
+    get:
+      tags:
+        - Subscriptions
+      summary: Текущая подписка
+      description: Возвращает информацию о текущей подписке
+      security:
+        - bearerAuth: []
+      operationId: getCurrentSubscription
+      responses:
+        '200':
+          description: Информация о подписке
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subscription'
+
+  /subscriptions/plans:
+    get:
+      tags:
+        - Subscriptions
+      summary: Доступные тарифы
+      description: Возвращает список доступных тарифных планов
+      operationId: getSubscriptionPlans
+      responses:
+        '200':
+          description: Список тарифов
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      enum: [free, basic, premium, business]
+                    name:
+                      type: string
+                    price:
+                      type: number
+                      format: float
+                    currency:
+                      type: string
+                    period:
+                      type: string
+                      enum: [month, year]
+                    features:
+                      type: array
+                      items:
+                        type: string
+                    maxDevices:
+                      type: integer
+                    maxCameras:
+                      type: integer
+                    recordingDays:
+                      type: integer
+
+  /subscriptions/change:
+    post:
+      tags:
+        - Subscriptions
+      summary: Сменить тариф
+      description: Изменяет тарифный план
+      security:
+        - bearerAuth: []
+      operationId: changeSubscription
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - planId
+              properties:
+                planId:
+                  type: string
+                  enum: [free, basic, premium, business]
+                paymentMethodId:
+                  type: string
+      responses:
+        '200':
+          description: Подписка изменена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subscription'
+        '402':
+          description: Ошибка оплаты
