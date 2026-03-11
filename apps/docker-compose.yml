@@ -23,7 +23,7 @@ services:
     build:
       context: ..
       dockerfile: ./docker/Dockerfile
-    container_name: smart_home_api_gateway
+    container_name: smart_home_temperature_api
     ports:
       - "8081:8081"
     entrypoint: ["python", "temperature_api.py"]
@@ -45,7 +45,7 @@ services:
       - TEMPERATURE_API_URL=http://temperature-api:8081
     ports:
       - "8080:8080"
-#    restart: unless-stopped
+    restart: unless-stopped
     networks:
       - smart_home_network
 

@@ -2710,19 +2710,29 @@ erDiagram
 * * [scenarios_engine_events.yaml](docs/to-be/async_api/scenarios_engine_events.yaml)
 
 # Задание 5. Работа с docker и docker-compose
-## Контейнер для запуска монолита
+## Оркестратор для запуска монолита
 * [docker-compose.yml](apps/docker-compose.yml)
 
+Команда для запуска:
 ```
 make docker-old-up
 ```
 
+Проверка через Postman:
+* [smarthome-api.postman_collection.json](apps/smarthome-api.postman_collection.json)
+
+## Оркестратор для запуска микросервисов и инфраструктуры
 * [docker-compose.yml](docker/docker-compose.yml)
 * [Dockerfile](docker/Dockerfile)
 
+Команда для запуска:
 ```
 make docker-new-up
 ```
+
+Проверка через Postman:
+* [new_services_api.postman_collection.json](apps/new_services/new_services_api.postman_collection.json)
+
 # **Задание 6. Разработка MVP**
 
 * [user_service.py](apps/new_services/user_service.py)

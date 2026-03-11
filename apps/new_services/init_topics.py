@@ -5,6 +5,7 @@ Kafka Topics Initialization Script
 
 import logging
 import time
+import kafka
 from kafka.admin import KafkaAdminClient, NewTopic
 from kafka.errors import NoBrokersAvailable, TopicAlreadyExistsError
 
@@ -161,7 +162,7 @@ def verify_topics(admin_client):
 
 def main():
     """Основная функция"""
-    logger.info("Kafka Topics Initialization")
+    logger.info("Kafka Topics Initialization. Версия kafka-python: %r", kafka.__version__)
 
     # Параметры подключения
     bootstrap_servers = 'kafka:9092'
